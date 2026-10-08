@@ -229,7 +229,7 @@ function CV({ d }) {
       title: 'Research Work',
       entries: projects.map((entry, idx) => makeEntry(`research-${idx}`, (
         <div>
-          <div className="t"><span>{entry.role || 'Student Researcher'}{entry.title ? ` — ${entry.title}` : ''}</span><i>{entry.year || ''}</i></div>
+          <div className="t"><span>{entry.role || ''}{entry.title ? ` — ${entry.title}` : ''}</span><i>{entry.year || ''}</i></div>
           <div className="o">{entry.institution || ''}</div>
           {entry.contribution && <div className="pre">{entry.contribution}</div>}
         </div>
@@ -322,8 +322,9 @@ function CV({ d }) {
     if (!root) return
 
     const pageHeight = (297 - 28) * 96 / 25.4 - 20
-    const sectionGap = 10
-    const entryGap = 5
+    const sectionGap = 13
+    const headingContentGap = 6
+    const entryGap = 6
     const headerHeight = root.querySelector('.cv-header').getBoundingClientRect().height
     const measurements = Array.from(root.querySelectorAll('.cv-section')).map((section) => {
       const headingHeight = section.querySelector('.cv-section-heading').getBoundingClientRect().height
@@ -355,7 +356,7 @@ function CV({ d }) {
         const page = pages[pages.length - 1]
         const headingHeight = measurement.headingHeight
         const sectionSpace = page.segments.length ? sectionGap : 0
-        let used = page.used + sectionSpace + headingHeight
+        let used = page.used + sectionSpace + headingHeight + headingContentGap
         const firstEntry = entryIndex
 
         while (entryIndex < measurement.entries.length) {
@@ -594,7 +595,7 @@ export default function App() {
                 onRemove={(i) => set({ projectEntries: (d.projectEntries || []).filter((_, idx) => idx !== i) })}
                 onChange={(idx, key, value) => set({ projectEntries: (d.projectEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
-                  { key: 'role', label: 'Role', placeholder: 'e.g. Student Researcher' },
+                  { key: 'role', label: 'Role', placeholder: 'e.g. Researcher' },
                   { key: 'title', label: 'Title' },
                   { key: 'institution', label: 'Institution / department' },
                   { key: 'year', label: 'Year' },
