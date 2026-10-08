@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 
 const LS = 'nursecv-react'
 const ACCENTS = ['#2563eb', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#0891b2', '#4f46e5', '#059669']
@@ -6,7 +6,7 @@ const today = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', mon
 const emptyEducation = { institution: '', location: '', qualification: '', grade: '', course: '', startYear: '', graduationYear: '' }
 const emptyWork = { organisation: '', location: '', title: '', startDate: '', endDate: '', responsibilities: '', achievements: '' }
 
-const emptyProject = { title: '', institution: '', year: '', contribution: '' }
+const emptyProject = { role: '', title: '', institution: '', year: '', contribution: '' }
 const emptyMembership = { organisation: '', position: '', year: '' }
 const emptyAward = { name: '', organisation: '', year: '', details: '' }
 const emptyLeadership = { role: '', organisation: '', duration: '', responsibilities: '' }
@@ -148,9 +148,9 @@ function DynamicSection({ title, entryName, items, onAdd, onRemove, onChange, fi
   )
 }
 
-const Sec = ({ t, children }) => <><h3>{t}</h3>{children}</>
-
 function CV({ d }) {
+  const measurementRef = useRef(null)
+  const [pageSegments, setPageSegments] = useState([])
   const registrations = (d.registrationEntries || []).filter(hasEntryContent)
   const education = (d.educationEntries || []).filter(hasEntryContent)
   const work = (d.workEntries || []).filter(hasEntryContent)
@@ -174,133 +174,247 @@ function CV({ d }) {
   const name = d.name || 'Your Name'
   const initials = name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
   const contactDetails = [d.email, d.phone, d.loc, d.link].filter((value) => value?.trim())
+  const makeEntry = (key, content) => ({ key, content: <div className="cv-entry" key={key}>{content}</div> })
+  const sections = [
+    {
+      title: 'Professional summary',
+      entries: [makeEntry('summary', d.summary?.trim()
+        ? <div className="pre">{d.summary}</div>
+        : <div className="empty-note">No summary added yet</div>)],
+    },
+    ...(registrations.length ? [{
+      title: 'Professional registration',
+      entries: registrations.map((entry, idx) => makeEntry(`registration-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.qualification || entry.body || 'Professional registration'}</span><i>{entry.year || ''}</i></div>
+          {entry.body && entry.qualification && <div className="o">{entry.body}</div>}
+          {entry.number && <div>Registration number: {entry.number}</div>}
+        </div>
+      ))),
+    }] : []),
+    ...(work.length ? [{
+      title: 'Work experience',
+      entries: work.map((entry, idx) => makeEntry(`work-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.title || 'Role'}</span><i>{entry.startDate || ''}{entry.startDate && entry.endDate ? ' - ' : ''}{entry.endDate || ''}</i></div>
+          <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
+          {entry.responsibilities && <ul>{entry.responsibilities.split('\n').map((line, lineIdx) => line.replace(/^[-•*]\s*/, '').trim()).filter(Boolean).map((line, lineIdx) => <li key={lineIdx}>{line}</li>)}</ul>}
+          {entry.achievements && <div className="o">Major achievements: {entry.achievements}</div>}
+        </div>
+      ))),
+    }] : []),
+    {
+      title: 'Education',
+      entries: education.length
+        ? education.map((entry, idx) => makeEntry(`education-${idx}`, (
+          <div>
+            <div className="t"><span>{[entry.qualification, entry.grade].filter(Boolean).join(' — ') || 'Qualification'}</span><i>{entry.startYear || ''}{entry.startYear && entry.graduationYear ? ' - ' : ''}{entry.graduationYear || ''}</i></div>
+            <div className="o">{entry.institution || ''}{entry.location ? `, ${entry.location}` : ''}</div>
+            {entry.course && <div className="o">Course: {entry.course}</div>}
+          </div>
+        )))
+        : [makeEntry('education-empty', <div className="empty-note">No education added yet</div>)],
+    },
+    ...(volunteer.length ? [{
+      title: 'Volunteer / community experience',
+      entries: volunteer.map((entry, idx) => makeEntry(`volunteer-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.role || 'Volunteer'}</span><i>{entry.duration || ''}</i></div>
+          <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
+          {entry.activities && <div className="pre">{entry.activities}</div>}
+        </div>
+      ))),
+    }] : []),
+    ...(projects.length ? [{
+      title: 'Research Work',
+      entries: projects.map((entry, idx) => makeEntry(`research-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.role || 'Student Researcher'}{entry.title ? ` — ${entry.title}` : ''}</span><i>{entry.year || ''}</i></div>
+          <div className="o">{entry.institution || ''}</div>
+          {entry.contribution && <div className="pre">{entry.contribution}</div>}
+        </div>
+      ))),
+    }] : []),
+    {
+      title: 'Key Skills',
+      entries: [makeEntry('skills', skills.length
+        ? <ul className="cv-skill-list">{skills.map((skill, idx) => <li key={`${skill}-${idx}`}>{skill}</li>)}</ul>
+        : <div className="empty-note">No skills added yet</div>)],
+    },
+    ...((certs.length || d.professionalBody || d.professionalQualification) ? [{
+      title: 'Certifications & training',
+      entries: [...certs, d.professionalBody && `${d.professionalQualification || 'Professional qualification'} | ${d.professionalBody} | Reg. No.: ${d.registrationNumber || 'N/A'}${d.yearRegistered ? ` | ${d.yearRegistered}` : ''}`]
+        .filter(Boolean)
+        .map((cert, idx) => makeEntry(`cert-${idx}`, <ul className="cv-bullet-list"><li>{cert}</li></ul>)),
+    }] : []),
+    ...(memberships.length ? [{
+      title: 'Professional memberships',
+      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li>{entry.position || 'Membership'} | {entry.organisation || 'Organisation'}{entry.year ? ` | ${entry.year}` : ''}</li></ul>)),
+    }] : []),
+    ...(awards.length ? [{
+      title: 'Awards & achievements',
+      entries: awards.map((entry, idx) => makeEntry(`award-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.name || 'Award'}</span><i>{entry.year || ''}</i></div>
+          <div className="o">{entry.organisation || ''}</div>
+          {entry.details && <div className="pre">{entry.details}</div>}
+        </div>
+      ))),
+    }] : []),
+    ...(leadership.length ? [{
+      title: 'Leadership & Extra-curricular Activities',
+      entries: leadership.map((entry, idx) => makeEntry(`leadership-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.role || 'Leadership role'}</span><i>{entry.duration || ''}</i></div>
+          <div className="o">{entry.organisation || ''}</div>
+          {entry.responsibilities && <div className="pre">{entry.responsibilities}</div>}
+        </div>
+      ))),
+    }] : []),
+    ...(otherInformation.length ? [{
+      title: 'Other relevant information',
+      entries: otherInformation.map((entry, idx) => makeEntry(`other-${idx}`, (
+        <div>
+          {entry.languages && <div><b>Languages spoken:</b> {entry.languages}</div>}
+          {entry.computerSkills && <div><b>Computer/IT skills:</b> {entry.computerSkills}</div>}
+          {entry.other && <div><b>Other relevant information:</b> {entry.other}</div>}
+        </div>
+      ))),
+    }] : []),
+    ...(references.length ? [{
+      title: 'References',
+      entries: references.map((entry, idx) => makeEntry(`reference-${idx}`, (
+        <div>
+          <div className="t"><span>{entry.name || 'Referee'}</span><i>{entry.relationship || ''}</i></div>
+          <div className="o">{entry.title || ''}{entry.title && entry.organisation ? ' | ' : ''}{entry.organisation || ''}</div>
+          {entry.phone && <div>{entry.phone}</div>}
+          {entry.email && <div>{entry.email}</div>}
+        </div>
+      ))),
+    }] : []),
+  ]
+  const header = (
+    <div className="cv-header">
+      {d.passport
+        ? <img src={d.passport} alt="Passport" className="passport-preview" />
+        : <div className="cv-avatar" aria-hidden="true">{initials}</div>}
+      <div className="cv-heading">
+        <h1>{name}</h1>
+        {d.title && <div className="ti">{d.title}</div>}
+        {contactDetails.length > 0 && <div className="cv-contact">{contactDetails.map((detail, idx) => <span key={`${detail}-${idx}`}>{detail}</span>)}</div>}
+      </div>
+    </div>
+  )
+  const renderSection = (segment, pageIndex, segmentIndex) => {
+    const section = sections[segment.sectionIndex]
+    return (
+      <section className="cv-section" key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
+        <h3 className="cv-section-heading">{section.title}</h3>
+        <div className="cv-section-content">
+          {section.entries.slice(segment.start, segment.end).map((entry) => entry.content)}
+        </div>
+      </section>
+    )
+  }
+
+  useLayoutEffect(() => {
+    const root = measurementRef.current
+    if (!root) return
+
+    const pageHeight = (297 - 28) * 96 / 25.4 - 20
+    const sectionGap = 10
+    const entryGap = 5
+    const headerHeight = root.querySelector('.cv-header').getBoundingClientRect().height
+    const measurements = Array.from(root.querySelectorAll('.cv-section')).map((section) => {
+      const headingHeight = section.querySelector('.cv-section-heading').getBoundingClientRect().height
+      const entries = Array.from(section.querySelectorAll('.cv-entry')).map((entry) => entry.getBoundingClientRect().height)
+      return {
+        headingHeight,
+        entries,
+        fullHeight: section.getBoundingClientRect().height,
+      }
+    })
+    const pages = [{ segments: [], used: headerHeight }]
+    const newPage = () => pages.push({ segments: [], used: 0 })
+
+    measurements.forEach((measurement, sectionIndex) => {
+      const current = pages[pages.length - 1]
+      const spaceBefore = current.segments.length ? sectionGap : 0
+      const fitsCurrent = current.used + spaceBefore + measurement.fullHeight <= pageHeight
+      if (fitsCurrent) {
+        current.segments.push({ sectionIndex, start: 0, end: measurement.entries.length })
+        current.used += spaceBefore + measurement.fullHeight
+        return
+      }
+
+      const fitsFresh = measurement.fullHeight <= pageHeight
+      if (fitsFresh && (current.segments.length > 0 || current.used > 0)) newPage()
+
+      let entryIndex = 0
+      while (entryIndex < measurement.entries.length) {
+        const page = pages[pages.length - 1]
+        const headingHeight = measurement.headingHeight
+        const sectionSpace = page.segments.length ? sectionGap : 0
+        let used = page.used + sectionSpace + headingHeight
+        const firstEntry = entryIndex
+
+        while (entryIndex < measurement.entries.length) {
+          const gap = entryIndex > firstEntry ? entryGap : 0
+          const entryHeight = measurement.entries[entryIndex]
+          if (used + gap + entryHeight > pageHeight && entryIndex > firstEntry) break
+          if (used + gap + entryHeight > pageHeight && (page.segments.length > 0 || page.used > 0)) break
+          used += gap + entryHeight
+          entryIndex += 1
+        }
+
+        if (entryIndex === firstEntry) {
+          newPage()
+          continue
+        }
+        page.segments.push({ sectionIndex, start: firstEntry, end: entryIndex })
+        page.used = used
+        if (entryIndex < measurement.entries.length) newPage()
+      }
+    })
+
+    const next = pages.map(({ segments }) => segments)
+    setPageSegments((current) => (
+      JSON.stringify(current.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end]))) ===
+      JSON.stringify(next.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end])))
+        ? current
+        : next
+    ))
+  }, [d])
+
+  const pages = pageSegments.length
+    ? pageSegments
+    : [sections.map((section, sectionIndex) => ({ sectionIndex, start: 0, end: section.entries.length }))]
+  const rootClass = `paper cv-paper ${d.template || 'ats'}`
   return (
-    <div className={`paper cv-paper ${d.template || 'ats'}`} style={{ '--ac': d.accent }}>
-      <div className="cv-header">
-        {d.passport
-          ? <img src={d.passport} alt="Passport" className="passport-preview" />
-          : <div className="cv-avatar" aria-hidden="true">{initials}</div>}
-        <div className="cv-heading">
-          <h1>{name}</h1>
-          {d.title && <div className="ti">{d.title}</div>}
-          {contactDetails.length > 0 && (
-            <div className="cv-contact">
-              {contactDetails.map((detail, idx) => <span key={`${detail}-${idx}`}>{detail}</span>)}
-            </div>
-          )}
+    <div className="cv-document">
+      <div className="cv-pagination-measure" ref={measurementRef} aria-hidden="true">
+        <div className="cv-page cv-measure-page">
+          {header}
+          <div className="cv-page-content">
+            {sections.map((section, sectionIndex) => (
+              <section className="cv-section" key={section.title} data-section-index={sectionIndex}>
+                <h3 className="cv-section-heading">{section.title}</h3>
+                <div className="cv-section-content">{section.entries.map((entry) => entry.content)}</div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
-
-      <Sec t="Professional summary">{d.summary?.trim() ? <div className="pre">{d.summary}</div> : <div style={{ color: '#999', fontStyle: 'italic' }}>No summary added yet</div>}</Sec>
-      {registrations.length > 0 && (
-        <Sec t="Professional registration">
-          {registrations.map((entry, idx) => (
-            <div className="en" key={idx}>
-              <div className="t"><span>{entry.qualification || entry.body || 'Professional registration'}</span><i>{entry.year || ''}</i></div>
-              {entry.body && entry.qualification && <div className="o">{entry.body}</div>}
-              {entry.number && <div>Registration number: {entry.number}</div>}
+      <div className="cv-pages">
+        {pages.map((segments, pageIndex) => (
+          <div className={`${rootClass} cv-page`} style={{ '--ac': d.accent }} key={pageIndex}>
+            {pageIndex === 0 && header}
+            <div className="cv-page-content">
+              {segments.map((segment, segmentIndex) => renderSection(segment, pageIndex, segmentIndex))}
             </div>
-          ))}
-        </Sec>
-      )}
-      {work.length > 0 && (
-        <Sec t="Work experience">
-          {work.map((entry, idx) => (
-            <div className="en" key={idx}>
-              <div className="t"><span>{entry.title || 'Role'}</span><i>{entry.startDate || ''}{entry.startDate && entry.endDate ? ' - ' : ''}{entry.endDate || ''}</i></div>
-              <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-              {entry.responsibilities && <ul>{entry.responsibilities.split('\n').map((l, j) => <li key={j}>{l.replace(/^[-•*]\s*/, '')}</li>).filter(Boolean)}</ul>}
-              {entry.achievements && <div className="o">Major achievements: {entry.achievements}</div>}
-            </div>
-          ))}
-        </Sec>
-      )}
-      <Sec t="Education">
-        {education.length > 0 ? (
-          education.map((entry, idx) => (
-            <div className="en" key={idx}>
-              <div className="t"><span>{[entry.qualification, entry.grade].filter(Boolean).join(' — ') || 'Qualification'}</span><i>{entry.startYear || ''}{entry.startYear && entry.graduationYear ? ' - ' : ''}{entry.graduationYear || ''}</i></div>
-              <div className="o">{entry.institution || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-              {entry.course && <div className="o">Course: {entry.course}</div>}
-            </div>
-          ))
-        ) : <div className="empty-note">No education added yet</div>}
-      </Sec>
-
-      {volunteer.length > 0 && (
-        <Sec t="Volunteer / community experience">
-          {volunteer.map((entry, idx) => (
-            <div className="en" key={idx}>
-              <div className="t"><span>{entry.role || 'Volunteer'}</span><i>{entry.duration || ''}</i></div>
-              <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-              {entry.activities && <div className="pre">{entry.activities}</div>}
-            </div>
-          ))}
-        </Sec>
-      )}
-      {projects.length > 0 && (
-        <Sec t="Research Work">
-          {projects.map((entry, idx) => (
-            <div className="en" key={idx}>
-              <div className="t"><span>{entry.title || 'Project title'}</span><i>{entry.year || ''}</i></div>
-              <div className="o">{entry.institution || ''}</div>
-              {entry.contribution && <div className="o">Role/Contribution: {entry.contribution}</div>}
-            </div>
-          ))}
-        </Sec>
-      )}
-      <Sec t="Key Skills">
-        {skills.length > 0 ? (
-          <div className="skill-tags">
-            {skills.map((skill, idx) => <span className="skill-tag" key={`${skill}-${idx}`}>{skill}</span>)}
           </div>
-        ) : <span className="empty-note skill-empty">No skills added yet</span>}
-      </Sec>
-      {(certs.length > 0 || d.professionalBody || d.professionalQualification) && (
-        <Sec t="Certifications & training">
-        <ul className="cl">{[...certs, d.professionalBody && `${d.professionalQualification || 'Professional qualification'} | ${d.professionalBody} | Reg. No.: ${d.registrationNumber || 'N/A'}${d.yearRegistered ? ` | ${d.yearRegistered}` : ''}`].filter(Boolean).map((c, i) => <li key={i}>{c}</li>)}</ul>
-        </Sec>
-      )}
-      {memberships.length > 0 && (
-        <Sec t="Professional memberships">
-          <ul className="cl">
-            {memberships.map((entry, idx) => <li key={idx}>{entry.position || 'Membership'} | {entry.organisation || 'Organisation'}{entry.year ? ` | ${entry.year}` : ''}</li>)}
-          </ul>
-        </Sec>
-      )}
-      {awards.length > 0 && (
-        <Sec t="Awards & achievements">
-          {awards.map((entry, idx) => (
-            <div className="en" key={idx}><div className="t"><span>{entry.name || 'Award'}</span><i>{entry.year || ''}</i></div><div className="o">{entry.organisation || ''}</div>{entry.details && <div className="pre">{entry.details}</div>}</div>
-          ))}
-        </Sec>
-      )}
-      {leadership.length > 0 && (
-        <Sec t="Leadership & Extra-curricular Activities">
-          {leadership.map((entry, idx) => (
-            <div className="en" key={idx}><div className="t"><span>{entry.role || 'Leadership role'}</span><i>{entry.duration || ''}</i></div><div className="o">{entry.organisation || ''}</div>{entry.responsibilities && <div className="pre">{entry.responsibilities}</div>}</div>
-          ))}
-        </Sec>
-      )}
-      {otherInformation.length > 0 && (
-        <Sec t="Other relevant information">
-          {otherInformation.map((entry, idx) => (
-            <div className="en" key={idx}>
-              {entry.languages && <div><b>Languages spoken:</b> {entry.languages}</div>}
-              {entry.computerSkills && <div><b>Computer/IT skills:</b> {entry.computerSkills}</div>}
-              {entry.other && <div><b>Other relevant information:</b> {entry.other}</div>}
-            </div>
-          ))}
-        </Sec>
-      )}
-      {references.length > 0 && (
-        <Sec t="References">
-          {references.map((entry, idx) => (
-            <div className="en" key={idx}><div className="t"><span>{entry.name || 'Referee'}</span><i>{entry.relationship || ''}</i></div><div className="o">{entry.title || ''}{entry.title && entry.organisation ? ' | ' : ''}{entry.organisation || ''}</div>{entry.phone && <div>{entry.phone}</div>}{entry.email && <div>{entry.email}</div>}</div>
-          ))}
-        </Sec>
-      )}
-
+        ))}
+      </div>
     </div>
   )
 }
@@ -403,9 +517,31 @@ export default function App() {
             <>
               <h2>Passport photo</h2>
               <div className="passport-upload-wrap">
-                {d.passport ? <img src={d.passport} alt="Passport preview" className="passport-preview" /> : <div className="passport-placeholder">Add passport</div>}
-                <input type="file" accept="image/*" onChange={handlePassport} />
-                {d.passport && <button type="button" className="rm" onClick={() => set({ passport: '' })}>Remove</button>}
+                {d.passport ? (
+                  <div className="passport-photo-row">
+                    <img src={d.passport} alt="Passport preview" className="passport-preview" />
+                    <div className="passport-photo-actions">
+                      <label className="passport-file-picker">
+                        <span>Replace photo</span>
+                        <input type="file" accept="image/*" onChange={handlePassport} aria-label="Replace passport photo" />
+                      </label>
+                      <button type="button" className="passport-remove" onClick={() => set({ passport: '' })}>
+                        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+                          <path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                        </svg>
+                        Remove photo
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="passport-placeholder">Add passport</div>
+                    <label className="passport-file-picker">
+                      <span>Choose photo</span>
+                      <input type="file" accept="image/*" onChange={handlePassport} aria-label="Add passport photo" />
+                    </label>
+                  </>
+                )}
               </div>
               <h2>Personal information</h2>
               <Input label="Full name" {...f('name')} /><Input label="Professional title" {...f('title')} />
@@ -458,10 +594,11 @@ export default function App() {
                 onRemove={(i) => set({ projectEntries: (d.projectEntries || []).filter((_, idx) => idx !== i) })}
                 onChange={(idx, key, value) => set({ projectEntries: (d.projectEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
+                  { key: 'role', label: 'Role', placeholder: 'e.g. Student Researcher' },
                   { key: 'title', label: 'Title' },
                   { key: 'institution', label: 'Institution / department' },
                   { key: 'year', label: 'Year' },
-                  { key: 'contribution', label: 'Role / contribution', textarea: true },
+                  { key: 'contribution', label: 'Contribution', textarea: true },
                 ]}
               />
 
