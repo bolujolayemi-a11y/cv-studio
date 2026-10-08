@@ -229,7 +229,7 @@ function CV({ d }) {
       title: 'Research Work',
       entries: projects.map((entry, idx) => makeEntry(`research-${idx}`, (
         <div>
-          <div className="t"><span>{entry.role || ''}{entry.title ? ` — ${entry.title}` : ''}</span><i>{entry.year || ''}</i></div>
+          <div className="t"><span>{[entry.role, entry.title].map((value) => value?.trim()).filter(Boolean).join(' — ')}</span><i>{entry.year || ''}</i></div>
           <div className="o">{entry.institution || ''}</div>
           {entry.contribution && <div className="pre">{entry.contribution}</div>}
         </div>
