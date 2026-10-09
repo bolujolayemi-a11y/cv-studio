@@ -40,7 +40,18 @@ const init = {
   cl: { to: 'Hiring Manager', org: '', orgLocation: '', role: '', date: today(), source: '', experience: '', motivation: '', attachments: '', body: '' },
 }
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
-const hasEntryContent = (entry) => Object.values(entry || {}).some((value) => String(value ?? '').trim())
+const hasEntryContent = (entry) => Object.entries(entry || {}).some(([key, value]) => (
+  !key.endsWith('Format') && String(value ?? '').trim()
+))
+const textLines = (value) => String(value || '').split('\n').map((line) => line.trim()).filter(Boolean)
+const cleanListLine = (line) => line.replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
+const formattedText = (value, format = 'paragraph') => {
+  if (format === 'bullets' || format === 'numbered') {
+    const List = format === 'numbered' ? 'ol' : 'ul'
+    return <List className="cv-text-list">{textLines(value).map((line, index) => <li key={index}>{cleanListLine(line)}</li>)}</List>
+  }
+  return <div className="pre">{value}</div>
+}
 
 function load() {
   try {
@@ -128,7 +139,19 @@ function DynamicEntryList({ title, entryName = 'Entry', items, onAdd, onRemove, 
           <button className="rm" type="button" onClick={() => onRemove(idx)}>Remove</button>
           {fields.map((field) => (
             field.textarea ? (
-              <Input key={field.key} area label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
+              <div className="textarea-field" key={field.key}>
+                <Input area label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
+                {field.formatKey && (
+                  <label className="text-format-picker">
+                    Preview as
+                    <select value={item[field.formatKey] || field.defaultFormat || 'paragraph'} onChange={(e) => onChange(idx, field.formatKey, e.target.value)}>
+                      <option value="paragraph">Paragraphs</option>
+                      <option value="bullets">Bullet list</option>
+                      <option value="numbered">Numbered list</option>
+                    </select>
+                  </label>
+                )}
+              </div>
             ) : (
               <Input key={field.key} label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
             )
@@ -150,7 +173,7 @@ function DynamicSection({ title, entryName, items, onAdd, onRemove, onChange, fi
 
 function CV({ d }) {
   const measurementRef = useRef(null)
-  const [pageSegments, setPageSegments] = useState([])
+  const [pagination, setPagination] = useState({ signature: '', pages: [] })
   const registrations = (d.registrationEntries || []).filter(hasEntryContent)
   const education = (d.educationEntries || []).filter(hasEntryContent)
   const work = (d.workEntries || []).filter(hasEntryContent)
@@ -172,7 +195,6 @@ function CV({ d }) {
     ].filter(Boolean).join(' | ')),
   ]
   const name = d.name || 'Your Name'
-  const initials = name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
   const contactDetails = [d.email, d.phone, d.loc, d.link].filter((value) => value?.trim())
   const makeEntry = (key, content) => ({ key, content: <div className="cv-entry" key={key}>{content}</div> })
   const sections = [
@@ -198,8 +220,8 @@ function CV({ d }) {
         <div>
           <div className="t"><span>{entry.title || 'Role'}</span><i>{entry.startDate || ''}{entry.startDate && entry.endDate ? ' - ' : ''}{entry.endDate || ''}</i></div>
           <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-          {entry.responsibilities && <ul>{entry.responsibilities.split('\n').map((line, lineIdx) => line.replace(/^[-•*]\s*/, '').trim()).filter(Boolean).map((line, lineIdx) => <li key={lineIdx}>{line}</li>)}</ul>}
-          {entry.achievements && <div className="o">Major achievements: {entry.achievements}</div>}
+          {entry.responsibilities && formattedText(entry.responsibilities, entry.responsibilitiesFormat || 'bullets')}
+          {entry.achievements && <div className="cv-labeled-text"><span className="o">Major achievements:</span>{formattedText(entry.achievements, entry.achievementsFormat)}</div>}
         </div>
       ))),
     }] : []),
@@ -221,7 +243,7 @@ function CV({ d }) {
         <div>
           <div className="t"><span>{entry.role || 'Volunteer'}</span><i>{entry.duration || ''}</i></div>
           <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-          {entry.activities && <div className="pre">{entry.activities}</div>}
+          {entry.activities && formattedText(entry.activities, entry.activitiesFormat)}
         </div>
       ))),
     }] : []),
@@ -231,7 +253,7 @@ function CV({ d }) {
         <div>
           <div className="t"><span>{[entry.role, entry.title].map((value) => value?.trim()).filter(Boolean).join(' — ')}</span><i>{entry.year || ''}</i></div>
           <div className="o">{entry.institution || ''}</div>
-          {entry.contribution && <div className="pre">{entry.contribution}</div>}
+          {entry.contribution && formattedText(entry.contribution, entry.contributionFormat)}
         </div>
       ))),
     }] : []),
@@ -257,7 +279,7 @@ function CV({ d }) {
         <div>
           <div className="t"><span>{entry.name || 'Award'}</span><i>{entry.year || ''}</i></div>
           <div className="o">{entry.organisation || ''}</div>
-          {entry.details && <div className="pre">{entry.details}</div>}
+          {entry.details && formattedText(entry.details, entry.detailsFormat)}
         </div>
       ))),
     }] : []),
@@ -267,7 +289,7 @@ function CV({ d }) {
         <div>
           <div className="t"><span>{entry.role || 'Leadership role'}</span><i>{entry.duration || ''}</i></div>
           <div className="o">{entry.organisation || ''}</div>
-          {entry.responsibilities && <div className="pre">{entry.responsibilities}</div>}
+          {entry.responsibilities && formattedText(entry.responsibilities, entry.responsibilitiesFormat)}
         </div>
       ))),
     }] : []),
@@ -275,9 +297,9 @@ function CV({ d }) {
       title: 'Other relevant information',
       entries: otherInformation.map((entry, idx) => makeEntry(`other-${idx}`, (
         <div>
-          {entry.languages && <div><b>Languages spoken:</b> {entry.languages}</div>}
-          {entry.computerSkills && <div><b>Computer/IT skills:</b> {entry.computerSkills}</div>}
-          {entry.other && <div><b>Other relevant information:</b> {entry.other}</div>}
+          {entry.languages && <div className="cv-labeled-text"><b>Languages spoken:</b>{formattedText(entry.languages, entry.languagesFormat)}</div>}
+          {entry.computerSkills && <div className="cv-labeled-text"><b>Computer/IT skills:</b>{formattedText(entry.computerSkills, entry.computerSkillsFormat)}</div>}
+          {entry.other && <div className="cv-labeled-text"><b>Other relevant information:</b>{formattedText(entry.other, entry.otherFormat)}</div>}
         </div>
       ))),
     }] : []),
@@ -293,11 +315,13 @@ function CV({ d }) {
       ))),
     }] : []),
   ]
+  const sectionSignature = JSON.stringify(sections.map((section) => [
+    section.title,
+    section.entries.map((entry) => entry.key),
+  ]))
   const header = (
-    <div className="cv-header">
-      {d.passport
-        ? <img src={d.passport} alt="Passport" className="passport-preview" />
-        : <div className="cv-avatar" aria-hidden="true">{initials}</div>}
+    <div className={`cv-header${d.passport ? '' : ' cv-header-no-photo'}`}>
+      {d.passport && <img src={d.passport} alt="Passport" className="passport-preview" />}
       <div className="cv-heading">
         <h1>{name}</h1>
         {d.title && <div className="ti">{d.title}</div>}
@@ -307,6 +331,7 @@ function CV({ d }) {
   )
   const renderSection = (segment, pageIndex, segmentIndex) => {
     const section = sections[segment.sectionIndex]
+    if (!section) return null
     return (
       <section className="cv-section" key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
         <h3 className="cv-section-heading">{section.title}</h3>
@@ -379,16 +404,17 @@ function CV({ d }) {
     })
 
     const next = pages.map(({ segments }) => segments)
-    setPageSegments((current) => (
-      JSON.stringify(current.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end]))) ===
+    setPagination((current) => (
+      current.signature === sectionSignature &&
+      JSON.stringify(current.pages.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end]))) ===
       JSON.stringify(next.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end])))
         ? current
-        : next
+        : { signature: sectionSignature, pages: next }
     ))
   }, [d])
 
-  const pages = pageSegments.length
-    ? pageSegments
+  const pages = pagination.signature === sectionSignature && pagination.pages.length
+    ? pagination.pages
     : [sections.map((section, sectionIndex) => ({ sectionIndex, start: 0, end: section.entries.length }))]
   const rootClass = `paper cv-paper ${d.template || 'ats'}`
   return (
@@ -582,8 +608,8 @@ export default function App() {
                   { key: 'title', label: 'Job title / position' },
                   { key: 'startDate', label: 'Start date' },
                   { key: 'endDate', label: 'End date' },
-                  { key: 'responsibilities', label: 'Key responsibilities', textarea: true },
-                  { key: 'achievements', label: 'Major achievements / contributions', textarea: true },
+                  { key: 'responsibilities', label: 'Key responsibilities', textarea: true, formatKey: 'responsibilitiesFormat', defaultFormat: 'bullets' },
+                  { key: 'achievements', label: 'Major achievements / contributions', textarea: true, formatKey: 'achievementsFormat' },
                 ]}
               />
 
@@ -599,7 +625,7 @@ export default function App() {
                   { key: 'title', label: 'Title' },
                   { key: 'institution', label: 'Institution / department' },
                   { key: 'year', label: 'Year' },
-                  { key: 'contribution', label: 'Contribution', textarea: true },
+                  { key: 'contribution', label: 'Contribution', textarea: true, formatKey: 'contributionFormat' },
                 ]}
               />
 
@@ -630,7 +656,7 @@ export default function App() {
                   { key: 'role', label: 'Role' },
                   { key: 'location', label: 'Location' },
                   { key: 'duration', label: 'Date / duration' },
-                  { key: 'activities', label: 'Activities / responsibilities', textarea: true },
+                  { key: 'activities', label: 'Activities / responsibilities', textarea: true, formatKey: 'activitiesFormat' },
                 ]}
               />
 
@@ -684,7 +710,7 @@ export default function App() {
                   { key: 'name', label: 'Award / achievement' },
                   { key: 'organisation', label: 'Organisation / institution' },
                   { key: 'year', label: 'Year' },
-                  { key: 'details', label: 'Details', textarea: true },
+                  { key: 'details', label: 'Details', textarea: true, formatKey: 'detailsFormat' },
                 ]}
               />
 
@@ -699,7 +725,7 @@ export default function App() {
                   { key: 'role', label: 'Position / role' },
                   { key: 'organisation', label: 'Organisation / institution' },
                   { key: 'duration', label: 'Duration' },
-                  { key: 'responsibilities', label: 'Responsibilities', textarea: true },
+                  { key: 'responsibilities', label: 'Responsibilities', textarea: true, formatKey: 'responsibilitiesFormat' },
                 ]}
               />
 
@@ -711,9 +737,9 @@ export default function App() {
                 onRemove={(i) => set({ otherInformationEntries: (d.otherInformationEntries || []).filter((_, idx) => idx !== i) })}
                 onChange={(idx, key, value) => set({ otherInformationEntries: (d.otherInformationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
-                  { key: 'languages', label: 'Languages spoken', textarea: true },
-                  { key: 'computerSkills', label: 'Computer / IT skills', textarea: true },
-                  { key: 'other', label: 'Other relevant experience or information', textarea: true },
+                  { key: 'languages', label: 'Languages spoken', textarea: true, formatKey: 'languagesFormat' },
+                  { key: 'computerSkills', label: 'Computer / IT skills', textarea: true, formatKey: 'computerSkillsFormat' },
+                  { key: 'other', label: 'Other relevant experience or information', textarea: true, formatKey: 'otherFormat' },
                 ]}
               />
 

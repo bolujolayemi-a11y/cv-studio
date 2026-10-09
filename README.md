@@ -11,7 +11,7 @@ Build a polished CV and matching cover letter, then print or save them as PDFs. 
 - **PDF-ready cover letters** in 12 pt Times New Roman with 1.5 line spacing, using your browser’s Print / Save as PDF option.
 
 Your CV and cover-letter content update in the preview as you edit. Add only the sections you need; empty entry rows are kept out of the CV preview.
-CV PDFs keep complete sections together when they fit on a page and avoid splitting individual entries where possible. Longer CVs continue onto additional pages without shrinking the body text to force a one-page layout.
+CV text is justified, and multiline experience, research, volunteer, award, and leadership content can be displayed as paragraphs, bullets, or a numbered list. CV PDFs keep complete sections together when they fit on a page and avoid splitting individual entries where possible. Longer CVs continue onto additional pages without shrinking the body text to force a one-page layout.
 
 ## Get started
 

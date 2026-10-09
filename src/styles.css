@@ -77,6 +77,8 @@ button { @apply cursor-pointer; }
 .ed input::placeholder, .ed textarea::placeholder { color: #94a3b8; }
 .ed input[type="color"] { @apply h-10 w-16 cursor-pointer p-1; }
 .ed textarea { @apply min-h-20 resize-y; }
+.text-format-picker { display: flex !important; align-items: center; gap: 10px; margin: -6px 0 12px !important; color: #64748b !important; font-size: 11px !important; }
+.text-format-picker select { width: auto; min-width: 145px; margin: 0; padding: 7px 30px 7px 10px; font-size: 12px; }
 .row { @apply grid grid-cols-2 gap-4; }
 .reg { @apply rounded-xl border p-3; border-color: #e2e8f0; background: #f8fafc; }
 .it { @apply mb-4 rounded-xl border p-4; border-color: var(--line); background: #fbfdff; }
@@ -117,10 +119,14 @@ button { @apply cursor-pointer; }
 .cv-section { display: flex; flex-direction: column; gap: 6px; break-inside: avoid; page-break-inside: avoid; }
 .cv-section-heading { break-after: avoid; page-break-after: avoid; }
 .cv-section-content { display: flex; flex-direction: column; gap: 6px; }
-.cv-entry { break-inside: avoid; page-break-inside: avoid; }
+.cv-entry { break-inside: avoid; page-break-inside: avoid; text-align: justify; }
 .cv-entry p { margin: 0 0 4px; }
 .cv-entry ul { margin: 2px 0 0; padding-left: 18px; }
 .cv-entry li { margin-bottom: 4px; }
+.cv-entry ul.cv-text-list { margin: 2px 0 0; padding-left: 20px; list-style: disc outside; }
+.cv-entry ol.cv-text-list { margin: 2px 0 0; padding-left: 20px; list-style: decimal outside; }
+.cv-entry .cv-text-list li { padding-left: 2px; }
+.cv-labeled-text { display: flex; flex-direction: column; gap: 2px; }
 .cv-bullet-list { margin: 0 !important; }
 .cv-skill-list { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 4px; margin: 0; padding-left: 18px; }
 .cv-skill-list li { min-width: 0; break-inside: avoid; }
@@ -184,7 +190,7 @@ button { @apply cursor-pointer; }
 .en ul, .cl { margin: 2px 0 0; padding-left: 18px; }
 .sk { display: grid; grid-template-columns: 110px 1fr; gap: 3px 8px; }
 .pre { white-space: pre-line; }
-.letter { font: 12pt/1.5 "Times New Roman", Times, serif; padding: 28px 36px; }
+.letter { font: 12pt/1.5 "Times New Roman", Times, serif; padding: 28px 36px; text-align: justify; }
 .letter-sender { margin-bottom: 28px; text-align: right; }
 .letter-sender-name { font-size: inherit; }
 .letter-date { margin: 0; }
