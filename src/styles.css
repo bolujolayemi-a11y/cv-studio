@@ -84,6 +84,8 @@ button { @apply cursor-pointer; }
 .it { @apply mb-4 rounded-xl border p-4; border-color: var(--line); background: #fbfdff; }
 .it { display: flex; flex-direction: column; }
 .it > .rm { align-self: flex-end; float: none; margin: 0 0 10px; }
+.entry-field-group { border-top: 1px solid #e8edf4; padding-top: 12px; }
+.entry-subheading { margin: 0 0 12px; color: #475569; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .ed button.add-entry { @apply flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-2.5; border-color: #cbd5e1; color: var(--brand-dark); background: #f8fafc; }
 .ed button.add-entry span { @apply grid h-5 w-5 place-items-center rounded-full text-base leading-none text-white; background: var(--brand); }
 .ed .rm { @apply float-right mb-2 px-2 py-1 text-xs; color: #dc2626; }
@@ -127,8 +129,15 @@ button { @apply cursor-pointer; }
 .cv-entry ol.cv-text-list { margin: 2px 0 0; padding-left: 20px; list-style: decimal outside; }
 .cv-entry .cv-text-list li { padding-left: 2px; }
 .cv-labeled-text { display: flex; flex-direction: column; gap: 2px; }
+.education-entry { display: flex; flex-direction: column; gap: 3px; break-inside: avoid; page-break-inside: avoid; }
+.education-institution-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: baseline; gap: 12px; break-inside: avoid; page-break-inside: avoid; }
+.education-institution-row > span, .education-qualification { min-width: 0; font-weight: 700; }
+.education-institution-row > i { color: #444; font-style: normal; text-align: right; white-space: nowrap; }
+.education-qualification-group, .education-qualification-row { break-inside: avoid; page-break-inside: avoid; }
+.education-grade { color: #444; overflow-wrap: anywhere; }
+.education-course { color: #444; }
 .cv-bullet-list { margin: 0 !important; }
-.cv-skill-list { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 4px; margin: 0; padding-left: 18px; }
+.cv-skill-list { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 4px; margin: 0; padding-left: 20px; list-style: disc outside; }
 .cv-skill-list li { min-width: 0; break-inside: avoid; }
 .cv-pagination-measure { position: absolute; top: 0; left: -10000px; width: 178mm; visibility: hidden; pointer-events: none; }
 .cv-measure-page { width: 178mm; min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
@@ -168,7 +177,10 @@ button { @apply cursor-pointer; }
 .cv-heading { min-width: 0; }
 .cv-heading h1 { margin: 0; color: #111; text-align: left; text-transform: none; font-family: "Times New Roman", Times, serif; font-size: 17pt; font-weight: 700; line-height: 1.05; }
 .cv-heading .ti { margin-top: 3px; color: #333; font-size: 10.5pt; font-weight: 400; letter-spacing: 0; text-align: left; text-transform: none; }
-.cv-contact { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 5px; color: #333; font-size: 10.5pt; }
+.cv-contact { display: flex; flex-direction: column; gap: 1px; margin-top: 5px; color: #333; font-size: 10.5pt; }
+.cv-contact-line { display: flex; flex-wrap: wrap; column-gap: 7px; }
+.cv-contact-item { display: inline-flex; align-items: baseline; gap: 7px; }
+.cv-contact-separator { color: #64748b; }
 .cv-avatar { display: grid; width: 76px; height: 76px; flex: 0 0 76px; place-items: center; border-radius: 50%; background: var(--ac); color: #fff; font: 700 22px Georgia, "Times New Roman", serif; }
 .cv-header .passport-preview { width: 76px; height: 76px; flex: 0 0 76px; margin: 0; border: 0; border-radius: 50%; object-fit: cover; }
 .ti, .ct, .rg { text-align: center; }
@@ -186,6 +198,22 @@ button { @apply cursor-pointer; }
 .t { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 10px; font-weight: 700; }
 .t > span { min-width: 0; }
 .t i { color: #444; font-style: normal; font-weight: 400; text-align: right; white-space: nowrap; }
+.cv-paper.timeline { border-radius: 0; }
+.cv-paper.timeline .cv-header, .cv-pagination-measure.timeline .cv-header { border-bottom-color: #111; }
+.cv-paper.timeline .cv-header-no-photo, .cv-pagination-measure.timeline .cv-header-no-photo { justify-content: center; }
+.cv-paper.timeline .cv-heading h1, .cv-pagination-measure.timeline .cv-heading h1 { text-align: center; text-transform: uppercase; }
+.cv-paper.timeline .cv-heading .ti, .cv-pagination-measure.timeline .cv-heading .ti { text-align: center; }
+.cv-paper.timeline .cv-contact-line, .cv-pagination-measure.timeline .cv-contact-line { justify-content: center; }
+.cv-paper.timeline .cv-section-heading, .cv-pagination-measure.timeline .cv-section-heading { border-bottom: 1px solid #111; padding-bottom: 2px; color: #111; letter-spacing: 0; text-transform: none; }
+.cv-paper.timeline .cv-page-content, .cv-pagination-measure.timeline .cv-page-content { gap: 10px; }
+.cv-paper.timeline .cv-section, .cv-pagination-measure.timeline .cv-section { gap: 4px; }
+.cv-paper.timeline .cv-section-content, .cv-pagination-measure.timeline .cv-section-content { gap: 4px; }
+.cv-timeline-entry { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; column-gap: 0; margin-bottom: 0; break-inside: avoid; page-break-inside: avoid; text-align: left; }
+.cv-timeline-date { padding: 1px 12px 0 0; color: #111; font-size: 10pt; text-align: left; overflow-wrap: anywhere; }
+.cv-timeline-content { min-width: 0; padding-left: 12px; text-align: justify; }
+.cv-timeline-content .t { display: block; text-align: left; }
+.cv-timeline-content .education-institution-row { display: block; }
+.cv-paper.timeline .education-entry { gap: 3px; }
 .o { color: #444; font-style: italic; }
 .en ul, .cl { margin: 2px 0 0; padding-left: 18px; }
 .sk { display: grid; grid-template-columns: 110px 1fr; gap: 3px 8px; }
@@ -222,6 +250,9 @@ button { @apply cursor-pointer; }
   .cv-avatar, .cv-header .passport-preview { width: 60px; height: 60px; flex-basis: 60px; }
   .cv-heading h1 { font-size: 22px; }
   .cv-contact { gap: 3px 9px; }
+  .cv-timeline-entry { grid-template-columns: 76px minmax(0, 1fr); }
+  .cv-timeline-date { padding-right: 8px; font-size: 9.5pt; }
+  .cv-timeline-content { padding-left: 10px; }
   .row { @apply grid-cols-1 gap-0; }
 }
 

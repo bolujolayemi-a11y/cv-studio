@@ -6,11 +6,11 @@ Build a polished CV and matching cover letter, then print or save them as PDFs. 
 
 - **CVs** with personal details, a professional summary, education, work experience, registrations, skills, and other relevant sections.
 - **Cover letters** tailored to a role, organisation, and recipient, with an editable generated draft.
-- **Different CV styles** — ATS, Modern, Executive, and Classic — with a choice of accent colours.
+- **Different CV styles** — ATS, Timeline CV, Modern, Executive, and Classic — with a choice of accent colours. Timeline CV uses a centered header, full-width section rules, and a left-aligned date column beside entry details.
 - **PDF-ready CVs** with compact Times New Roman typography, a stacked plain-text skills list, professional A4 margins, and page-aware section and entry placement.
 - **PDF-ready cover letters** in 12 pt Times New Roman with 1.5 line spacing, using your browser’s Print / Save as PDF option.
 
-Your CV and cover-letter content update in the preview as you edit. Add only the sections you need; empty entry rows are kept out of the CV preview.
+Your CV and cover-letter content update in the preview as you edit. Skills display as bullets. Education entries align institution and attendance dates, then show qualification, course, and a labeled grade. Contact information is arranged across two lines with bullet separators. Entries are kept together during pagination where possible. Add only the sections you need; empty entry rows are kept out of the CV preview.
 CV text is justified, and multiline experience, research, volunteer, award, and leadership content can be displayed as paragraphs, bullets, or a numbered list. CV PDFs keep complete sections together when they fit on a page and avoid splitting individual entries where possible. Longer CVs continue onto additional pages without shrinking the body text to force a one-page layout.
 
 ## Get started

@@ -40,6 +40,7 @@ const init = {
   cl: { to: 'Hiring Manager', org: '', orgLocation: '', role: '', date: today(), source: '', experience: '', motivation: '', attachments: '', body: '' },
 }
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
+const joinPresent = (values, separator) => values.map((value) => String(value ?? '').trim()).filter(Boolean).join(separator)
 const hasEntryContent = (entry) => Object.entries(entry || {}).some(([key, value]) => (
   !key.endsWith('Format') && String(value ?? '').trim()
 ))
@@ -58,7 +59,12 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(LS))
     if (!saved || typeof saved !== 'object') return init
 
-    const data = { ...init, ...saved, cl: { ...init.cl, ...saved.cl } }
+    const data = {
+      ...init,
+      ...saved,
+      template: saved.template === 'reverse-ats' ? 'timeline' : saved.template,
+      cl: { ...init.cl, ...saved.cl },
+    }
     for (const key of [
       'workEntries', 'projectEntries', 'membershipEntries',
       'awardEntries', 'leadershipEntries', 'referenceEntries', 'registrationEntries',
@@ -138,23 +144,26 @@ function DynamicEntryList({ title, entryName = 'Entry', items, onAdd, onRemove, 
         <div className="it" key={idx}>
           <button className="rm" type="button" onClick={() => onRemove(idx)}>Remove</button>
           {fields.map((field) => (
-            field.textarea ? (
-              <div className="textarea-field" key={field.key}>
-                <Input area label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
-                {field.formatKey && (
-                  <label className="text-format-picker">
-                    Preview as
-                    <select value={item[field.formatKey] || field.defaultFormat || 'paragraph'} onChange={(e) => onChange(idx, field.formatKey, e.target.value)}>
-                      <option value="paragraph">Paragraphs</option>
-                      <option value="bullets">Bullet list</option>
-                      <option value="numbered">Numbered list</option>
-                    </select>
-                  </label>
-                )}
-              </div>
-            ) : (
-              <Input key={field.key} label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
-            )
+            <div className={field.subsection ? 'entry-field-group' : undefined} key={field.key}>
+              {field.subsection && <h3 className="entry-subheading">{field.subsection}</h3>}
+              {field.textarea ? (
+                <div className="textarea-field">
+                  <Input area label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
+                  {field.formatKey && (
+                    <label className="text-format-picker">
+                      Preview as
+                      <select value={item[field.formatKey] || field.defaultFormat || 'paragraph'} onChange={(e) => onChange(idx, field.formatKey, e.target.value)}>
+                        <option value="paragraph">Paragraphs</option>
+                        <option value="bullets">Bullet list</option>
+                        <option value="numbered">Numbered list</option>
+                      </select>
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <Input label={field.label} placeholder={field.placeholder} value={item[field.key] || ''} onChange={(e) => onChange(idx, field.key, e.target.value)} />
+              )}
+            </div>
           ))}
         </div>
       ))}
@@ -195,8 +204,26 @@ function CV({ d }) {
     ].filter(Boolean).join(' | ')),
   ]
   const name = d.name || 'Your Name'
-  const contactDetails = [d.email, d.phone, d.loc, d.link].filter((value) => value?.trim())
-  const makeEntry = (key, content) => ({ key, content: <div className="cv-entry" key={key}>{content}</div> })
+  const isTimeline = d.template === 'timeline'
+  const contactLine = (details) => {
+    const values = details.map((value) => String(value ?? '').trim()).filter(Boolean)
+    return values.map((value, idx) => (
+      <span className="cv-contact-item" key={`${value}-${idx}`}>
+        {idx > 0 && <span className="cv-contact-separator" aria-hidden="true">•</span>}
+        {value}
+      </span>
+    ))
+  }
+  const makeEntry = (key, content, date = '') => ({
+    key,
+    content: (
+      <div className={`cv-entry${isTimeline ? ' cv-timeline-entry' : ''}`} key={key}>
+        {isTimeline && <div className="cv-timeline-date" aria-hidden={!date || undefined}>{date}</div>}
+        <div className={isTimeline ? 'cv-timeline-content' : 'cv-entry-content'}>{content}</div>
+      </div>
+    ),
+  })
+  const entryDate = (start, end) => [start, end].filter(Boolean).join(isTimeline ? ' – ' : ' - ')
   const sections = [
     {
       title: 'Professional summary',
@@ -208,54 +235,68 @@ function CV({ d }) {
       title: 'Professional registration',
       entries: registrations.map((entry, idx) => makeEntry(`registration-${idx}`, (
         <div>
-          <div className="t"><span>{entry.qualification || entry.body || 'Professional registration'}</span><i>{entry.year || ''}</i></div>
+          <div className="t"><span>{entry.qualification || entry.body || 'Professional registration'}</span>{!isTimeline && entry.year && <i>{entry.year}</i>}</div>
           {entry.body && entry.qualification && <div className="o">{entry.body}</div>}
           {entry.number && <div>Registration number: {entry.number}</div>}
         </div>
-      ))),
+      ), entry.year)),
     }] : []),
     ...(work.length ? [{
       title: 'Work experience',
       entries: work.map((entry, idx) => makeEntry(`work-${idx}`, (
         <div>
-          <div className="t"><span>{entry.title || 'Role'}</span><i>{entry.startDate || ''}{entry.startDate && entry.endDate ? ' - ' : ''}{entry.endDate || ''}</i></div>
-          <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
+          <div className="t"><span>{entry.title || 'Role'}</span>{!isTimeline && entryDate(entry.startDate, entry.endDate) && <i>{entryDate(entry.startDate, entry.endDate)}</i>}</div>
+          {joinPresent([entry.organisation, entry.location], ', ') && <div className="o">{joinPresent([entry.organisation, entry.location], ', ')}</div>}
           {entry.responsibilities && formattedText(entry.responsibilities, entry.responsibilitiesFormat || 'bullets')}
           {entry.achievements && <div className="cv-labeled-text"><span className="o">Major achievements:</span>{formattedText(entry.achievements, entry.achievementsFormat)}</div>}
         </div>
-      ))),
+      ), entryDate(entry.startDate, entry.endDate))),
     }] : []),
     {
       title: 'Education',
       entries: education.length
         ? education.map((entry, idx) => makeEntry(`education-${idx}`, (
-          <div>
-            <div className="t"><span>{[entry.qualification, entry.grade].filter(Boolean).join(' — ') || 'Qualification'}</span><i>{entry.startYear || ''}{entry.startYear && entry.graduationYear ? ' - ' : ''}{entry.graduationYear || ''}</i></div>
-            <div className="o">{entry.institution || ''}{entry.location ? `, ${entry.location}` : ''}</div>
-            {entry.course && <div className="o">Course: {entry.course}</div>}
+          <div className="education-entry">
+            {(entry.institution || entry.location || entry.startYear || entry.graduationYear) && (
+              <div className="education-institution-row">
+                <span>{joinPresent([entry.institution, entry.location], ', ')}</span>
+                {!isTimeline && entryDate(entry.startYear, entry.graduationYear) && <i>{entryDate(entry.startYear, entry.graduationYear)}</i>}
+              </div>
+            )}
+            {(entry.qualification || entry.course || entry.grade) && (
+              <div className="education-qualification-group">
+                <div className="education-qualification-row">
+                  <div>
+                    {entry.qualification && <span className="education-qualification">{entry.qualification}</span>}
+                    {entry.course && <span className="education-course">{entry.qualification && ', '}{entry.course}</span>}
+                  </div>
+                </div>
+                {entry.grade && <div className="education-grade"><b>Grade:</b> {entry.grade}</div>}
+              </div>
+            )}
           </div>
-        )))
+        ), entryDate(entry.startYear, entry.graduationYear)))
         : [makeEntry('education-empty', <div className="empty-note">No education added yet</div>)],
     },
     ...(volunteer.length ? [{
       title: 'Volunteer / community experience',
       entries: volunteer.map((entry, idx) => makeEntry(`volunteer-${idx}`, (
         <div>
-          <div className="t"><span>{entry.role || 'Volunteer'}</span><i>{entry.duration || ''}</i></div>
-          <div className="o">{entry.organisation || ''}{entry.location ? `, ${entry.location}` : ''}</div>
+          <div className="t"><span>{entry.role || 'Volunteer'}</span>{!isTimeline && entry.duration && <i>{entry.duration}</i>}</div>
+          {joinPresent([entry.organisation, entry.location], ', ') && <div className="o">{joinPresent([entry.organisation, entry.location], ', ')}</div>}
           {entry.activities && formattedText(entry.activities, entry.activitiesFormat)}
         </div>
-      ))),
+      ), entry.duration)),
     }] : []),
     ...(projects.length ? [{
       title: 'Research Work',
       entries: projects.map((entry, idx) => makeEntry(`research-${idx}`, (
         <div>
-          <div className="t"><span>{[entry.role, entry.title].map((value) => value?.trim()).filter(Boolean).join(' — ')}</span><i>{entry.year || ''}</i></div>
-          <div className="o">{entry.institution || ''}</div>
+          <div className="t"><span>{[entry.role, entry.title].map((value) => value?.trim()).filter(Boolean).join(' — ')}</span>{!isTimeline && entry.year && <i>{entry.year}</i>}</div>
+          {entry.institution && <div className="o">{entry.institution}</div>}
           {entry.contribution && formattedText(entry.contribution, entry.contributionFormat)}
         </div>
-      ))),
+      ), entry.year)),
     }] : []),
     {
       title: 'Key Skills',
@@ -277,21 +318,21 @@ function CV({ d }) {
       title: 'Awards & achievements',
       entries: awards.map((entry, idx) => makeEntry(`award-${idx}`, (
         <div>
-          <div className="t"><span>{entry.name || 'Award'}</span><i>{entry.year || ''}</i></div>
-          <div className="o">{entry.organisation || ''}</div>
+          <div className="t"><span>{entry.name || 'Award'}</span>{!isTimeline && entry.year && <i>{entry.year}</i>}</div>
+          {entry.organisation && <div className="o">{entry.organisation}</div>}
           {entry.details && formattedText(entry.details, entry.detailsFormat)}
         </div>
-      ))),
+      ), entry.year)),
     }] : []),
     ...(leadership.length ? [{
       title: 'Leadership & Extra-curricular Activities',
       entries: leadership.map((entry, idx) => makeEntry(`leadership-${idx}`, (
         <div>
-          <div className="t"><span>{entry.role || 'Leadership role'}</span><i>{entry.duration || ''}</i></div>
-          <div className="o">{entry.organisation || ''}</div>
+          <div className="t"><span>{entry.role || 'Leadership role'}</span>{!isTimeline && entry.duration && <i>{entry.duration}</i>}</div>
+          {entry.organisation && <div className="o">{entry.organisation}</div>}
           {entry.responsibilities && formattedText(entry.responsibilities, entry.responsibilitiesFormat)}
         </div>
-      ))),
+      ), entry.duration)),
     }] : []),
     ...(otherInformation.length ? [{
       title: 'Other relevant information',
@@ -315,7 +356,25 @@ function CV({ d }) {
       ))),
     }] : []),
   ]
-  const sectionSignature = JSON.stringify(sections.map((section) => [
+  const timelineSectionOrder = [
+    'Professional summary',
+    'Education',
+    'Work experience',
+    'Professional registration',
+    'Research Work',
+    'Volunteer / community experience',
+    'Leadership & Extra-curricular Activities',
+    'Awards & achievements',
+    'Key Skills',
+    'Certifications & training',
+    'Professional memberships',
+    'Other relevant information',
+    'References',
+  ]
+  const orderedSections = isTimeline
+    ? [...sections].sort((a, b) => timelineSectionOrder.indexOf(a.title) - timelineSectionOrder.indexOf(b.title))
+    : sections
+  const sectionSignature = JSON.stringify(orderedSections.map((section) => [
     section.title,
     section.entries.map((entry) => entry.key),
   ]))
@@ -325,12 +384,17 @@ function CV({ d }) {
       <div className="cv-heading">
         <h1>{name}</h1>
         {d.title && <div className="ti">{d.title}</div>}
-        {contactDetails.length > 0 && <div className="cv-contact">{contactDetails.map((detail, idx) => <span key={`${detail}-${idx}`}>{detail}</span>)}</div>}
+        {(d.email || d.phone || d.link || d.loc) && (
+          <div className="cv-contact">
+            {joinPresent([d.email, d.phone, d.link], '') && <div className="cv-contact-line">{contactLine([d.email, d.phone, d.link])}</div>}
+            {String(d.loc || '').trim() && <div className="cv-contact-line">{contactLine([d.loc])}</div>}
+          </div>
+        )}
       </div>
     </div>
   )
   const renderSection = (segment, pageIndex, segmentIndex) => {
-    const section = sections[segment.sectionIndex]
+    const section = orderedSections[segment.sectionIndex]
     if (!section) return null
     return (
       <section className="cv-section" key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
@@ -415,15 +479,15 @@ function CV({ d }) {
 
   const pages = pagination.signature === sectionSignature && pagination.pages.length
     ? pagination.pages
-    : [sections.map((section, sectionIndex) => ({ sectionIndex, start: 0, end: section.entries.length }))]
+    : [orderedSections.map((section, sectionIndex) => ({ sectionIndex, start: 0, end: section.entries.length }))]
   const rootClass = `paper cv-paper ${d.template || 'ats'}`
   return (
     <div className="cv-document">
-      <div className="cv-pagination-measure" ref={measurementRef} aria-hidden="true">
+      <div className={`cv-pagination-measure ${d.template || 'ats'}`} ref={measurementRef} aria-hidden="true">
         <div className="cv-page cv-measure-page">
           {header}
           <div className="cv-page-content">
-            {sections.map((section, sectionIndex) => (
+            {orderedSections.map((section, sectionIndex) => (
               <section className="cv-section" key={section.title} data-section-index={sectionIndex}>
                 <h3 className="cv-section-heading">{section.title}</h3>
                 <div className="cv-section-content">{section.entries.map((entry) => entry.content)}</div>
@@ -517,6 +581,7 @@ export default function App() {
           <div className="template-picker">
             <label>CV format<select value={d.template} onChange={(e) => set({ template: e.target.value })}>
               <option value="ats">ATS</option>
+              <option value="timeline">Timeline CV</option>
               <option value="modern">Modern</option>
               <option value="executive">Executive</option>
               <option value="classic">Classic</option>
@@ -585,13 +650,13 @@ export default function App() {
                 onRemove={(i) => set({ educationEntries: (d.educationEntries || []).filter((_, idx) => idx !== i) })}
                 onChange={(idx, key, value) => set({ educationEntries: (d.educationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
-                  { key: 'institution', label: 'Institution' },
+                  { key: 'institution', label: 'Institution', subsection: 'Institution attended' },
                   { key: 'location', label: 'Location' },
-                  { key: 'qualification', label: 'Qualification / degree' },
-                  { key: 'grade', label: 'Degree classification / CGPA', placeholder: 'e.g. Second Class Upper Honours (4.21/5.0 CGPA)' },
+                  { key: 'startYear', label: 'Start date' },
+                  { key: 'graduationYear', label: 'End date' },
+                  { key: 'qualification', label: 'Qualification / degree', subsection: 'Educational qualification' },
                   { key: 'course', label: 'Course / field of study' },
-                  { key: 'startYear', label: 'Start year' },
-                  { key: 'graduationYear', label: 'Graduation year' },
+                  { key: 'grade', label: 'Degree classification / CGPA', placeholder: 'e.g. Second Class Upper Honours (4.21/5.0 CGPA)' },
                 ]}
               />
 
