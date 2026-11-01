@@ -18,7 +18,7 @@ const emptySkill = { name: '' }
 const emptyOtherInformation = { languages: '', computerSkills: '', other: '' }
 const emptyInformation = { languages: '', computerSkills: '', other: '' }
 const init = {
-  accent: '#2563eb', template: 'ats',
+  accent: '#2563eb', template: 'ats', cvPageCount: 2,
   name: '', title: '', email: '', phone: '', loc: '', link: '', summary: '',
   passport: '',
   certs: '',
@@ -37,7 +37,7 @@ const init = {
   certificationEntries: [],
   skillEntries: [],
   otherInformationEntries: [],
-  cl: { to: 'Hiring Manager', org: '', orgLocation: '', role: '', date: today(), source: '', experience: '', motivation: '', attachments: '', body: '' },
+  cl: { to: 'Hiring Manager', org: '', orgLocation: '', role: '', date: today(), source: '', experience: '', motivation: '', attachments: '', includeEmail: false, body: '' },
 }
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
 const joinPresent = (values, separator) => values.map((value) => String(value ?? '').trim()).filter(Boolean).join(separator)
@@ -180,9 +180,9 @@ function DynamicSection({ title, entryName, items, onAdd, onRemove, onChange, fi
   )
 }
 
-function CV({ d }) {
+function CV({ d, onLayout }) {
   const measurementRef = useRef(null)
-  const [pagination, setPagination] = useState({ signature: '', pages: [] })
+  const [pagination, setPagination] = useState({ signature: '', pages: [], fontSize: 12, lineHeight: 2 })
   const registrations = (d.registrationEntries || []).filter(hasEntryContent)
   const education = (d.educationEntries || []).filter(hasEntryContent)
   const work = (d.workEntries || []).filter(hasEntryContent)
@@ -205,6 +205,11 @@ function CV({ d }) {
   ]
   const name = d.name || 'Your Name'
   const isTimeline = d.template === 'timeline'
+  const contactRows = d.loc && d.link
+    ? [[d.email, d.phone], [d.loc, d.link]]
+    : d.phone && d.link
+      ? [[d.email], [d.phone, d.link]]
+      : [[d.email, d.phone, d.link], [d.loc]]
   const contactLine = (details) => {
     const values = details.map((value) => String(value ?? '').trim()).filter(Boolean)
     return values.map((value, idx) => (
@@ -378,6 +383,7 @@ function CV({ d }) {
     section.title,
     section.entries.map((entry) => entry.key),
   ]))
+  const layoutSignature = `${sectionSignature}:${d.cvPageCount || 2}`
   const header = (
     <div className={`cv-header${d.passport ? '' : ' cv-header-no-photo'}`}>
       {d.passport && <img src={d.passport} alt="Passport" className="passport-preview" />}
@@ -386,8 +392,16 @@ function CV({ d }) {
         {d.title && <div className="ti">{d.title}</div>}
         {(d.email || d.phone || d.link || d.loc) && (
           <div className="cv-contact">
-            {joinPresent([d.email, d.phone, d.link], '') && <div className="cv-contact-line">{contactLine([d.email, d.phone, d.link])}</div>}
-            {String(d.loc || '').trim() && <div className="cv-contact-line">{contactLine([d.loc])}</div>}
+            {contactRows.map((row, idx) => {
+              const details = row.filter((value) => String(value ?? '').trim())
+              if (!details.length) return null
+              const keepsLinkedInInline = d.link && details.includes(d.link)
+              return (
+                <div className={`cv-contact-line${keepsLinkedInInline ? ' cv-contact-line-nowrap' : ''}`} key={idx}>
+                  {contactLine(details)}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -410,80 +424,114 @@ function CV({ d }) {
     const root = measurementRef.current
     if (!root) return
 
-    const pageHeight = (297 - 28) * 96 / 25.4 - 20
+    const pageHeight = (297 - 50.8) * 96 / 25.4 - 20
     const sectionGap = 13
     const headingContentGap = 6
     const entryGap = 6
-    const headerHeight = root.querySelector('.cv-header').getBoundingClientRect().height
-    const measurements = Array.from(root.querySelectorAll('.cv-section')).map((section) => {
-      const headingHeight = section.querySelector('.cv-section-heading').getBoundingClientRect().height
-      const entries = Array.from(section.querySelectorAll('.cv-entry')).map((entry) => entry.getBoundingClientRect().height)
-      return {
-        headingHeight,
-        entries,
+    const paginate = (fontSize, lineHeight) => {
+      root.style.fontSize = `${fontSize}pt`
+      root.style.lineHeight = String(lineHeight)
+      const headerHeight = root.querySelector('.cv-header').getBoundingClientRect().height
+      const measurements = Array.from(root.querySelectorAll('.cv-section')).map((section) => ({
+        headingHeight: section.querySelector('.cv-section-heading').getBoundingClientRect().height,
+        entries: Array.from(section.querySelectorAll('.cv-entry')).map((entry) => entry.getBoundingClientRect().height),
         fullHeight: section.getBoundingClientRect().height,
-      }
-    })
-    const pages = [{ segments: [], used: headerHeight }]
-    const newPage = () => pages.push({ segments: [], used: 0 })
+      }))
+      const pages = [{ segments: [], used: headerHeight }]
+      const newPage = () => pages.push({ segments: [], used: 0 })
 
-    measurements.forEach((measurement, sectionIndex) => {
-      const current = pages[pages.length - 1]
-      const spaceBefore = current.segments.length ? sectionGap : 0
-      const fitsCurrent = current.used + spaceBefore + measurement.fullHeight <= pageHeight
-      if (fitsCurrent) {
-        current.segments.push({ sectionIndex, start: 0, end: measurement.entries.length })
-        current.used += spaceBefore + measurement.fullHeight
-        return
-      }
+      measurements.forEach((measurement, sectionIndex) => {
+        const current = pages[pages.length - 1]
+        const spaceBefore = current.segments.length ? sectionGap : 0
+        if (current.used + spaceBefore + measurement.fullHeight <= pageHeight) {
+          current.segments.push({ sectionIndex, start: 0, end: measurement.entries.length })
+          current.used += spaceBefore + measurement.fullHeight
+          return
+        }
 
-      const fitsFresh = measurement.fullHeight <= pageHeight
-      if (fitsFresh && (current.segments.length > 0 || current.used > 0)) newPage()
+        if (measurement.fullHeight <= pageHeight && (current.segments.length || current.used)) newPage()
 
-      let entryIndex = 0
-      while (entryIndex < measurement.entries.length) {
-        const page = pages[pages.length - 1]
-        const headingHeight = measurement.headingHeight
-        const sectionSpace = page.segments.length ? sectionGap : 0
-        let used = page.used + sectionSpace + headingHeight + headingContentGap
-        const firstEntry = entryIndex
-
+        let entryIndex = 0
         while (entryIndex < measurement.entries.length) {
-          const gap = entryIndex > firstEntry ? entryGap : 0
-          const entryHeight = measurement.entries[entryIndex]
-          if (used + gap + entryHeight > pageHeight && entryIndex > firstEntry) break
-          if (used + gap + entryHeight > pageHeight && (page.segments.length > 0 || page.used > 0)) break
-          used += gap + entryHeight
-          entryIndex += 1
-        }
+          const page = pages[pages.length - 1]
+          const sectionSpace = page.segments.length ? sectionGap : 0
+          let used = page.used + sectionSpace + measurement.headingHeight + headingContentGap
+          const firstEntry = entryIndex
 
-        if (entryIndex === firstEntry) {
-          newPage()
-          continue
+          while (entryIndex < measurement.entries.length) {
+            const gap = entryIndex > firstEntry ? entryGap : 0
+            const entryHeight = measurement.entries[entryIndex]
+            if (used + gap + entryHeight > pageHeight && entryIndex > firstEntry) break
+            if (used + gap + entryHeight > pageHeight && (page.segments.length || page.used)) break
+            used += gap + entryHeight
+            entryIndex += 1
+          }
+
+          if (entryIndex === firstEntry) {
+            newPage()
+            continue
+          }
+          page.segments.push({ sectionIndex, start: firstEntry, end: entryIndex })
+          page.used = used
+          if (entryIndex < measurement.entries.length) newPage()
         }
-        page.segments.push({ sectionIndex, start: firstEntry, end: entryIndex })
-        page.used = used
-        if (entryIndex < measurement.entries.length) newPage()
+      })
+
+      return pages.map(({ segments }) => segments)
+    }
+
+    const targetPages = Number(d.cvPageCount) || 2
+    let fontSize = 12
+    let lineHeight = 2
+    let next = paginate(fontSize, lineHeight)
+    if (next.length > targetPages) {
+      const minimumPages = paginate(10, 1)
+      if (minimumPages.length <= targetPages) {
+        let tooLarge = 0
+        let fits = 1
+        for (let attempt = 0; attempt < 12; attempt += 1) {
+          const reduction = (tooLarge + fits) / 2
+          const candidateFont = 12 - 2 * reduction
+          const candidateLineHeight = 2 - reduction
+          if (paginate(candidateFont, candidateLineHeight).length <= targetPages) fits = reduction
+          else tooLarge = reduction
+        }
+        fontSize = 12 - 2 * fits
+        lineHeight = 2 - fits
+        next = paginate(fontSize, lineHeight)
+      } else {
+        fontSize = 10
+        lineHeight = 1
+        next = minimumPages
       }
-    })
-
-    const next = pages.map(({ segments }) => segments)
+    }
+    root.style.fontSize = ''
+    root.style.lineHeight = ''
+    const layout = { signature: layoutSignature, pages: next, fontSize, lineHeight }
     setPagination((current) => (
-      current.signature === sectionSignature &&
+      current.signature === layoutSignature &&
+      current.fontSize === fontSize &&
+      current.lineHeight === lineHeight &&
       JSON.stringify(current.pages.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end]))) ===
       JSON.stringify(next.map((page) => page.map(({ sectionIndex, start, end }) => [sectionIndex, start, end])))
         ? current
-        : { signature: sectionSignature, pages: next }
+        : layout
     ))
+    onLayout({ fontSize, lineHeight, pages: next.length })
   }, [d])
 
-  const pages = pagination.signature === sectionSignature && pagination.pages.length
+  const pages = pagination.signature === layoutSignature && pagination.pages.length
     ? pagination.pages
     : [orderedSections.map((section, sectionIndex) => ({ sectionIndex, start: 0, end: section.entries.length }))]
   const rootClass = `paper cv-paper ${d.template || 'ats'}`
   return (
     <div className="cv-document">
-      <div className={`cv-pagination-measure ${d.template || 'ats'}`} ref={measurementRef} aria-hidden="true">
+      <div
+        className={`cv-pagination-measure ${d.template || 'ats'}`}
+        ref={measurementRef}
+        style={{ fontSize: `${pagination.fontSize}pt`, lineHeight: pagination.lineHeight }}
+        aria-hidden="true"
+      >
         <div className="cv-page cv-measure-page">
           {header}
           <div className="cv-page-content">
@@ -498,7 +546,15 @@ function CV({ d }) {
       </div>
       <div className="cv-pages">
         {pages.map((segments, pageIndex) => (
-          <div className={`${rootClass} cv-page`} style={{ '--ac': d.accent }} key={pageIndex}>
+          <div
+            className={`${rootClass} cv-page`}
+            style={{
+              '--ac': d.accent,
+              fontSize: `${pagination.fontSize}pt`,
+              lineHeight: pagination.lineHeight,
+            }}
+            key={pageIndex}
+          >
             {pageIndex === 0 && header}
             <div className="cv-page-content">
               {segments.map((segment, segmentIndex) => renderSection(segment, pageIndex, segmentIndex))}
@@ -513,10 +569,10 @@ function CV({ d }) {
 function Letter({ d }) {
   const c = d.cl
   return (
-    <div className={`paper letter ${d.template || 'ats'}`} style={{ '--ac': d.accent }}>
+    <div className="paper letter">
       <div className="letter-sender">
         <div className="letter-sender-name">{d.name || 'Your Name'}</div>
-        {[d.loc, d.phone, d.email].filter(Boolean).map((detail, idx) => <div key={`${detail}-${idx}`}>{detail}</div>)}
+        {[d.loc, d.phone, c.includeEmail && d.email].filter(Boolean).map((detail, idx) => <div key={`${detail}-${idx}`}>{detail}</div>)}
         <div className="letter-date">{c.date}</div>
       </div>
       <div className="letter-recipient">
@@ -534,6 +590,7 @@ function Letter({ d }) {
 export default function App() {
   const [d, setD] = useState(load)
   const [tab, setTab] = useState('cv')
+  const [cvLayout, setCvLayout] = useState({ fontSize: 12, lineHeight: 2, pages: 0 })
   useEffect(() => { try { localStorage.setItem(LS, JSON.stringify(d)) } catch {} }, [d])
   const set = (p) => setD((s) => ({ ...s, ...p }))
   const f = (k) => ({ value: d[k], onChange: (e) => set({ [k]: e.target.value }) })
@@ -578,33 +635,60 @@ export default function App() {
             <span className="step-dot">1</span>
             <div><strong>{tab === 'cv' ? 'Your details' : 'Letter details'}</strong><span>Start with the essentials</span></div>
           </div>
-          <div className="template-picker">
-            <label>CV format<select value={d.template} onChange={(e) => set({ template: e.target.value })}>
-              <option value="ats">ATS</option>
-              <option value="timeline">Timeline CV</option>
-              <option value="modern">Modern</option>
-              <option value="executive">Executive</option>
-              <option value="classic">Classic</option>
-            </select></label>
-          </div>
-          <div className="accent-field">
-            <label className="accent-label">Accent colour</label>
-            <div className="swatches">
-              {ACCENTS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={d.accent === c ? 'swatch active' : 'swatch'}
-                  style={{ background: c }}
-                  onClick={() => set({ accent: c })}
-                  aria-label={`Select accent colour ${c}`}
-                />
-              ))}
-              <label className="swatch-custom" title="Custom colour">
-                <input type="color" value={d.accent} onChange={(e) => set({ accent: e.target.value })} aria-label="Custom accent colour" />
-              </label>
-            </div>
-          </div>
+          {tab === 'cv' && (
+            <>
+              <fieldset className="cv-page-count">
+                <legend>Choose CV page count</legend>
+                <div>
+                  {[1, 2, 3, 4, 5, 6].map((pageCount) => (
+                    <label key={pageCount}>
+                      <input
+                        type="checkbox"
+                        checked={Number(d.cvPageCount || 2) === pageCount}
+                        onChange={() => set({ cvPageCount: pageCount })}
+                        aria-label={`${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`}
+                      />
+                      {pageCount}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {cvLayout.pages > 0 && (
+                <p className="cv-layout-status">
+                  {cvLayout.pages > Number(d.cvPageCount || 2)
+                    ? `The ${d.cvPageCount || 2}-page target needs more room. Showing all content across ${cvLayout.pages} pages at the minimum settings (10 pt, 1.0 spacing).`
+                    : `Using ${cvLayout.pages} of up to ${d.cvPageCount || 2} pages at ${cvLayout.fontSize.toFixed(1)} pt with ${cvLayout.lineHeight.toFixed(2)} spacing.`}
+                </p>
+              )}
+              <div className="template-picker">
+                <label>CV format<select value={d.template} onChange={(e) => set({ template: e.target.value })}>
+                  <option value="ats">ATS</option>
+                  <option value="timeline">Timeline CV</option>
+                  <option value="modern">Modern</option>
+                  <option value="executive">Executive</option>
+                  <option value="classic">Classic</option>
+                </select></label>
+              </div>
+              <div className="accent-field">
+                <label className="accent-label">Accent colour</label>
+                <div className="swatches">
+                  {ACCENTS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={d.accent === c ? 'swatch active' : 'swatch'}
+                      style={{ background: c }}
+                      onClick={() => set({ accent: c })}
+                      aria-label={`Select accent colour ${c}`}
+                    />
+                  ))}
+                  <label className="swatch-custom" title="Custom colour">
+                    <input type="color" value={d.accent} onChange={(e) => set({ accent: e.target.value })} aria-label="Custom accent colour" />
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
           {tab === 'cv' ? (
             <>
               <h2>Passport photo</h2>
@@ -831,6 +915,14 @@ export default function App() {
               <Input label="Hiring manager / recipient" {...cf('to')} /><Input label="Organisation" {...cf('org')} />
               <Input label="Organisation location / address" {...cf('orgLocation')} />
               <Input label="Position applying for" {...cf('role')} /><Input label="Date" {...cf('date')} />
+              <label className="letter-email-option">
+                <input
+                  type="checkbox"
+                  checked={Boolean(d.cl.includeEmail)}
+                  onChange={(e) => set({ cl: { ...d.cl, includeEmail: e.target.checked } })}
+                />
+                Include my email address in the cover letter
+              </label>
               <Input label="Where you found the role (optional)" placeholder="e.g. Company website, LinkedIn" {...cf('source')} />
               <Input area label="Relevant experience, skills, or qualifications" placeholder="Highlight experience and strengths that relate to this role." {...cf('experience')} />
               <Input area label="Why you are interested (optional)" placeholder="What interests you about this role or organisation?" {...cf('motivation')} />
@@ -842,7 +934,7 @@ export default function App() {
         </section>
         <section className="preview-panel">
           <div className="preview-heading"><div><span>LIVE PREVIEW</span><strong>{tab === 'cv' ? 'Your CV' : 'Your cover letter'}</strong></div><span className="live-dot">Live</span></div>
-          <div className="pw">{tab === 'cv' ? <CV d={d} /> : <Letter d={d} />}</div>
+          <div className="pw">{tab === 'cv' ? <CV d={d} onLayout={setCvLayout} /> : <Letter d={d} />}</div>
         </section>
         </div>
       </main>
