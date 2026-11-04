@@ -18,7 +18,7 @@ const emptySkill = { name: '' }
 const emptyOtherInformation = { languages: '', computerSkills: '', other: '' }
 const emptyInformation = { languages: '', computerSkills: '', other: '' }
 const init = {
-  accent: '#2563eb', template: 'ats', cvPageCount: 2,
+  accent: '#2563eb', template: 'ats',
   name: '', title: '', email: '', phone: '', loc: '', link: '', summary: '',
   passport: '',
   certs: '',
@@ -37,7 +37,7 @@ const init = {
   certificationEntries: [],
   skillEntries: [],
   otherInformationEntries: [],
-  cl: { to: 'Hiring Manager', org: '', orgLocation: '', role: '', date: today(), source: '', experience: '', motivation: '', attachments: '', includeEmail: false, body: '' },
+  cl: { to: 'Hiring Manager', org: '', orgLocation: '', senderAddress: '', senderLocation: '', salutation: 'Dear Sir/Madam,', role: '', date: today(), experience: '', motivation: '', attachments: '', includeName: false, includePhone: false, includeEmail: false, body: '' },
 }
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
 const joinPresent = (values, separator) => values.map((value) => String(value ?? '').trim()).filter(Boolean).join(separator)
@@ -59,11 +59,22 @@ function load() {
     const saved = JSON.parse(localStorage.getItem(LS))
     if (!saved || typeof saved !== 'object') return init
 
+    const savedGreeting = typeof saved.cl?.body === 'string'
+      ? saved.cl.body.match(/^\s*(Dear\b[^\n]*)\n+/i)?.[1]
+      : ''
+    const savedBody = savedGreeting && !saved.cl?.salutation
+      ? saved.cl.body.replace(/^\s*Dear\b[^\n]*\n+/i, '')
+      : saved.cl?.body
     const data = {
       ...init,
       ...saved,
       template: saved.template === 'reverse-ats' ? 'timeline' : saved.template,
-      cl: { ...init.cl, ...saved.cl },
+      cl: {
+        ...init.cl,
+        ...saved.cl,
+        salutation: saved.cl?.salutation || savedGreeting || init.cl.salutation,
+        body: savedBody || '',
+      },
     }
     for (const key of [
       'workEntries', 'projectEntries', 'membershipEntries',
@@ -180,7 +191,7 @@ function DynamicSection({ title, entryName, items, onAdd, onRemove, onChange, fi
   )
 }
 
-function CV({ d, onLayout }) {
+function CV({ d }) {
   const measurementRef = useRef(null)
   const [pagination, setPagination] = useState({ signature: '', pages: [], fontSize: 12, lineHeight: 2 })
   const registrations = (d.registrationEntries || []).filter(hasEntryContent)
@@ -383,7 +394,7 @@ function CV({ d, onLayout }) {
     section.title,
     section.entries.map((entry) => entry.key),
   ]))
-  const layoutSignature = `${sectionSignature}:${d.cvPageCount || 2}`
+  const layoutSignature = sectionSignature
   const header = (
     <div className={`cv-header${d.passport ? '' : ' cv-header-no-photo'}`}>
       {d.passport && <img src={d.passport} alt="Passport" className="passport-preview" />}
@@ -480,7 +491,7 @@ function CV({ d, onLayout }) {
       return pages.map(({ segments }) => segments)
     }
 
-    const targetPages = Number(d.cvPageCount) || 2
+    const targetPages = 2
     let fontSize = 12
     let lineHeight = 2
     let next = paginate(fontSize, lineHeight)
@@ -517,7 +528,6 @@ function CV({ d, onLayout }) {
         ? current
         : layout
     ))
-    onLayout({ fontSize, lineHeight, pages: next.length })
   }, [d])
 
   const pages = pagination.signature === layoutSignature && pagination.pages.length
@@ -571,8 +581,9 @@ function Letter({ d }) {
   return (
     <div className="paper letter">
       <div className="letter-sender">
-        <div className="letter-sender-name">{d.name || 'Your Name'}</div>
-        {[d.loc, d.phone, c.includeEmail && d.email].filter(Boolean).map((detail, idx) => <div key={`${detail}-${idx}`}>{detail}</div>)}
+        {c.includeName && d.name && <div className="letter-sender-name">{d.name}</div>}
+        {c.senderAddress && <div className="letter-sender-address pre">{c.senderAddress}</div>}
+        {[c.senderLocation || d.loc, c.includePhone && d.phone, c.includeEmail && d.email].filter(Boolean).map((detail, idx) => <div key={`${detail}-${idx}`}>{detail}</div>)}
         <div className="letter-date">{c.date}</div>
       </div>
       <div className="letter-recipient">
@@ -580,9 +591,10 @@ function Letter({ d }) {
         {c.org && <div>{c.org}</div>}
         {c.orgLocation && <div className="letter-org-location">{c.orgLocation.split(',').map((part) => part.trim()).filter(Boolean).join(',\n')}</div>}
       </div>
+      {c.salutation && <p className="letter-salutation">{c.salutation}</p>}
       <p className="letter-subject"><strong>Application for {c.role || 'the advertised position'}</strong></p>
       <div className="pre">{c.body || 'Your cover letter draft will appear here.'}</div>
-      <p className="letter-signoff">Yours faithfully,<br /><br />{d.name || 'Your Name'}</p>
+      <p className="letter-signoff">Yours faithfully,{c.includeName && d.name && <><br /><br />{d.name}</>}</p>
     </div>
   )
 }
@@ -590,7 +602,6 @@ function Letter({ d }) {
 export default function App() {
   const [d, setD] = useState(load)
   const [tab, setTab] = useState('cv')
-  const [cvLayout, setCvLayout] = useState({ fontSize: 12, lineHeight: 2, pages: 0 })
   useEffect(() => { try { localStorage.setItem(LS, JSON.stringify(d)) } catch {} }, [d])
   const set = (p) => setD((s) => ({ ...s, ...p }))
   const f = (k) => ({ value: d[k], onChange: (e) => set({ [k]: e.target.value }) })
@@ -605,11 +616,17 @@ export default function App() {
   const draft = () => {
     const c = d.cl
     const organization = c.org.trim() ? ` at ${c.org.trim()}` : ''
-    const source = c.source.trim() ? ` through ${c.source.trim()}` : ''
-    const experience = c.experience.trim() || d.summary.trim() || '[Briefly describe your relevant experience, skills, or qualifications.]'
-    const motivation = c.motivation.trim() || `[Explain why you are interested in this role${c.org.trim() ? ` and ${c.org.trim()}` : ''}.]`
-    const attachments = c.attachments.trim() ? `\n\nI have included ${c.attachments.trim()} for your consideration.` : ''
-    const body = `Dear ${c.to.trim() || 'Hiring Manager'},\n\nI am writing to apply for ${c.role.trim() || 'the advertised position'}${organization}${source}.\n\n${experience}\n\n${motivation}\n\nI would welcome the opportunity to discuss how my experience and skills could contribute to your team.${attachments}\n\nThank you for your time and consideration.`
+    const experience = c.experience.trim() || d.summary.trim()
+    const motivation = c.motivation.trim()
+    const attachments = c.attachments.trim() ? `I have included ${c.attachments.trim()} for your consideration.` : ''
+    const body = [
+      `I am writing to apply for ${c.role.trim() || 'the advertised position'}${organization}.`,
+      experience,
+      motivation,
+      'I would welcome the opportunity to discuss how my experience and skills could contribute to your team.',
+      attachments,
+      'Thank you for your time and consideration.',
+    ].filter(Boolean).join('\n\n')
     set({ cl: { ...d.cl, body } })
   }
   return (
@@ -637,29 +654,6 @@ export default function App() {
           </div>
           {tab === 'cv' && (
             <>
-              <fieldset className="cv-page-count">
-                <legend>Choose CV page count</legend>
-                <div>
-                  {[1, 2, 3, 4, 5, 6].map((pageCount) => (
-                    <label key={pageCount}>
-                      <input
-                        type="checkbox"
-                        checked={Number(d.cvPageCount || 2) === pageCount}
-                        onChange={() => set({ cvPageCount: pageCount })}
-                        aria-label={`${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`}
-                      />
-                      {pageCount}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              {cvLayout.pages > 0 && (
-                <p className="cv-layout-status">
-                  {cvLayout.pages > Number(d.cvPageCount || 2)
-                    ? `The ${d.cvPageCount || 2}-page target needs more room. Showing all content across ${cvLayout.pages} pages at the minimum settings (10 pt, 1.0 spacing).`
-                    : `Using ${cvLayout.pages} of up to ${d.cvPageCount || 2} pages at ${cvLayout.fontSize.toFixed(1)} pt with ${cvLayout.lineHeight.toFixed(2)} spacing.`}
-                </p>
-              )}
               <div className="template-picker">
                 <label>CV format<select value={d.template} onChange={(e) => set({ template: e.target.value })}>
                   <option value="ats">ATS</option>
@@ -912,9 +906,28 @@ export default function App() {
           ) : (
             <>
               <h2>Cover letter</h2>
+              <Input area label="Your address" placeholder="Street address" {...cf('senderAddress')} />
+              <Input label="Your location" placeholder="City, region, postcode" {...cf('senderLocation')} />
               <Input label="Hiring manager / recipient" {...cf('to')} /><Input label="Organisation" {...cf('org')} />
               <Input label="Organisation location / address" {...cf('orgLocation')} />
+              <Input label="Salutation" placeholder="e.g. Dear Sir/Madam," {...cf('salutation')} />
               <Input label="Position applying for" {...cf('role')} /><Input label="Date" {...cf('date')} />
+              <label className="letter-email-option">
+                <input
+                  type="checkbox"
+                  checked={Boolean(d.cl.includeName)}
+                  onChange={(e) => set({ cl: { ...d.cl, includeName: e.target.checked } })}
+                />
+                Include my name in the cover letter
+              </label>
+              <label className="letter-email-option">
+                <input
+                  type="checkbox"
+                  checked={Boolean(d.cl.includePhone)}
+                  onChange={(e) => set({ cl: { ...d.cl, includePhone: e.target.checked } })}
+                />
+                Include my phone number in the cover letter
+              </label>
               <label className="letter-email-option">
                 <input
                   type="checkbox"
@@ -923,8 +936,8 @@ export default function App() {
                 />
                 Include my email address in the cover letter
               </label>
-              <Input label="Where you found the role (optional)" placeholder="e.g. Company website, LinkedIn" {...cf('source')} />
-              <Input area label="Relevant experience, skills, or qualifications" placeholder="Highlight experience and strengths that relate to this role." {...cf('experience')} />
+              <p className="letter-guidance">These prompts are optional. Answers you add are used in the generated letter; if experience is blank, your CV summary is used when available.</p>
+              <Input area label="Relevant experience, skills, or qualifications (optional)" placeholder="Highlight experience and strengths that relate to this role." {...cf('experience')} />
               <Input area label="Why you are interested (optional)" placeholder="What interests you about this role or organisation?" {...cf('motivation')} />
               <Input label="Supporting documents (optional)" placeholder="e.g. CV, portfolio, or references" {...cf('attachments')} />
               <button className="p full" onClick={draft}>Generate cover letter draft</button>
@@ -934,7 +947,7 @@ export default function App() {
         </section>
         <section className="preview-panel">
           <div className="preview-heading"><div><span>LIVE PREVIEW</span><strong>{tab === 'cv' ? 'Your CV' : 'Your cover letter'}</strong></div><span className="live-dot">Live</span></div>
-          <div className="pw">{tab === 'cv' ? <CV d={d} onLayout={setCvLayout} /> : <Letter d={d} />}</div>
+          <div className="pw">{tab === 'cv' ? <CV d={d} /> : <Letter d={d} />}</div>
         </section>
         </div>
       </main>

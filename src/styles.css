@@ -81,12 +81,6 @@ button { @apply cursor-pointer; }
 .text-format-picker select { width: auto; min-width: 145px; margin: 0; padding: 7px 30px 7px 10px; font-size: 12px; }
 .ed label.letter-email-option { display: flex; align-items: center; gap: 9px; margin: 0 0 16px; color: #475569; font-size: 12px; }
 .ed .letter-email-option input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: var(--brand); }
-.ed .cv-page-count { margin: 0 0 10px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; }
-.ed .cv-page-count legend { padding: 0 5px; color: #475569; font-size: 12px; font-weight: 700; }
-.ed .cv-page-count > div { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.ed .cv-page-count label { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 0; padding: 7px 3px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #475569; cursor: pointer; }
-.ed .cv-page-count input[type="checkbox"] { width: 14px; height: 14px; flex: 0 0 14px; margin: 0; accent-color: var(--brand); }
-.ed .cv-layout-status { margin: 0 0 16px; color: #64748b; font-size: 11px; }
 .row { @apply grid grid-cols-2 gap-4; }
 .reg { @apply rounded-xl border p-3; border-color: #e2e8f0; background: #f8fafc; }
 .it { @apply mb-4 rounded-xl border p-4; border-color: var(--line); background: #fbfdff; }
@@ -230,6 +224,7 @@ button { @apply cursor-pointer; }
 .letter { font: 12pt/1.5 "Times New Roman", Times, serif; padding: 28px 36px; text-align: justify; }
 .letter-sender { margin-bottom: 28px; text-align: right; }
 .letter-sender-name { font-size: inherit; }
+.letter-guidance { margin: -4px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .letter-date { margin: 0; }
 .letter-recipient { margin-bottom: 36px; }
 .letter-org-location { white-space: pre-line; }
