@@ -79,8 +79,8 @@ button { @apply cursor-pointer; }
 .ed textarea { @apply min-h-20 resize-y; }
 .text-format-picker { display: flex !important; align-items: center; gap: 10px; margin: -6px 0 12px !important; color: #64748b !important; font-size: 11px !important; }
 .text-format-picker select { width: auto; min-width: 145px; margin: 0; padding: 7px 30px 7px 10px; font-size: 12px; }
-.ed label.letter-email-option { display: flex; align-items: center; gap: 9px; margin: 0 0 16px; color: #475569; font-size: 12px; }
-.ed .letter-email-option input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: var(--brand); }
+.ed label.letter-name-option { display: flex; align-items: center; gap: 9px; margin: 0 0 16px; color: #475569; font-size: 12px; }
+.ed .letter-name-option input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: var(--brand); }
 .row { @apply grid grid-cols-2 gap-4; }
 .reg { @apply rounded-xl border p-3; border-color: #e2e8f0; background: #f8fafc; }
 .it { @apply mb-4 rounded-xl border p-4; border-color: var(--line); background: #fbfdff; }
@@ -223,13 +223,14 @@ button { @apply cursor-pointer; }
 .pre { white-space: pre-line; }
 .letter { font: 12pt/1.5 "Times New Roman", Times, serif; padding: 28px 36px; text-align: justify; }
 .letter-sender { margin-bottom: 28px; text-align: right; }
-.letter-sender-name { font-size: inherit; }
 .letter-guidance { margin: -4px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .letter-date { margin: 0; }
 .letter-recipient { margin-bottom: 36px; }
 .letter-org-location { white-space: pre-line; }
 .letter-subject { margin: 0 0 18px; text-align: center; }
 .letter-signoff { margin-top: 24px; }
+.letter-signature-space { display: block; width: 220px; height: 36px; }
+.letter-signature-name { display: block; margin-top: 4px; }
 
 @media (max-width: 900px) {
   .wrap { @apply grid-cols-1; }

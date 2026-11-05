@@ -37,10 +37,11 @@ const init = {
   certificationEntries: [],
   skillEntries: [],
   otherInformationEntries: [],
-  cl: { to: 'Hiring Manager', org: '', orgLocation: '', senderAddress: '', senderLocation: '', salutation: 'Dear Sir/Madam,', role: '', date: today(), experience: '', motivation: '', attachments: '', includeName: false, includePhone: false, includeEmail: false, body: '' },
+  cl: { to: 'Hiring Manager', org: '', orgLocation: '', senderAddress: '', senderLocation: '', salutation: 'Dear Sir/Madam,', role: '', date: today(), experience: '', motivation: '', attachments: '', includeName: false, body: '' },
 }
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
 const joinPresent = (values, separator) => values.map((value) => String(value ?? '').trim()).filter(Boolean).join(separator)
+const formatLocation = (value) => String(value || '').split(',').map((part) => part.trim()).filter(Boolean).join(',\n')
 const hasEntryContent = (entry) => Object.entries(entry || {}).some(([key, value]) => (
   !key.endsWith('Format') && String(value ?? '').trim()
 ))
@@ -65,13 +66,15 @@ function load() {
     const savedBody = savedGreeting && !saved.cl?.salutation
       ? saved.cl.body.replace(/^\s*Dear\b[^\n]*\n+/i, '')
       : saved.cl?.body
+    const savedLetter = { ...init.cl, ...saved.cl }
+    delete savedLetter.includePhone
+    delete savedLetter.includeEmail
     const data = {
       ...init,
       ...saved,
       template: saved.template === 'reverse-ats' ? 'timeline' : saved.template,
       cl: {
-        ...init.cl,
-        ...saved.cl,
+        ...savedLetter,
         salutation: saved.cl?.salutation || savedGreeting || init.cl.salutation,
         body: savedBody || '',
       },
@@ -581,20 +584,27 @@ function Letter({ d }) {
   return (
     <div className="paper letter">
       <div className="letter-sender">
-        {c.includeName && d.name && <div className="letter-sender-name">{d.name}</div>}
         {c.senderAddress && <div className="letter-sender-address pre">{c.senderAddress}</div>}
-        {[c.senderLocation || d.loc, c.includePhone && d.phone, c.includeEmail && d.email].filter(Boolean).map((detail, idx) => <div key={`${detail}-${idx}`}>{detail}</div>)}
+        {(c.senderLocation || d.loc) && <div className="letter-org-location">{formatLocation(c.senderLocation || d.loc)}</div>}
         <div className="letter-date">{c.date}</div>
       </div>
       <div className="letter-recipient">
         <div>{c.to}</div>
         {c.org && <div>{c.org}</div>}
-        {c.orgLocation && <div className="letter-org-location">{c.orgLocation.split(',').map((part) => part.trim()).filter(Boolean).join(',\n')}</div>}
+        {c.orgLocation && <div className="letter-org-location">{formatLocation(c.orgLocation)}</div>}
       </div>
       {c.salutation && <p className="letter-salutation">{c.salutation}</p>}
       <p className="letter-subject"><strong>Application for {c.role || 'the advertised position'}</strong></p>
       <div className="pre">{c.body || 'Your cover letter draft will appear here.'}</div>
-      <p className="letter-signoff">Yours faithfully,{c.includeName && d.name && <><br /><br />{d.name}</>}</p>
+      <p className="letter-signoff">
+        Yours faithfully,
+        {c.includeName && d.name && (
+          <>
+            <span className="letter-signature-space" aria-hidden="true" />
+            <span className="letter-signature-name">{d.name}</span>
+          </>
+        )}
+      </p>
     </div>
   )
 }
@@ -912,29 +922,13 @@ export default function App() {
               <Input label="Organisation location / address" {...cf('orgLocation')} />
               <Input label="Salutation" placeholder="e.g. Dear Sir/Madam," {...cf('salutation')} />
               <Input label="Position applying for" {...cf('role')} /><Input label="Date" {...cf('date')} />
-              <label className="letter-email-option">
+              <label className="letter-name-option">
                 <input
                   type="checkbox"
                   checked={Boolean(d.cl.includeName)}
                   onChange={(e) => set({ cl: { ...d.cl, includeName: e.target.checked } })}
                 />
                 Include my name in the cover letter
-              </label>
-              <label className="letter-email-option">
-                <input
-                  type="checkbox"
-                  checked={Boolean(d.cl.includePhone)}
-                  onChange={(e) => set({ cl: { ...d.cl, includePhone: e.target.checked } })}
-                />
-                Include my phone number in the cover letter
-              </label>
-              <label className="letter-email-option">
-                <input
-                  type="checkbox"
-                  checked={Boolean(d.cl.includeEmail)}
-                  onChange={(e) => set({ cl: { ...d.cl, includeEmail: e.target.checked } })}
-                />
-                Include my email address in the cover letter
               </label>
               <p className="letter-guidance">These prompts are optional. Answers you add are used in the generated letter; if experience is blank, your CV summary is used when available.</p>
               <Input area label="Relevant experience, skills, or qualifications (optional)" placeholder="Highlight experience and strengths that relate to this role." {...cf('experience')} />
