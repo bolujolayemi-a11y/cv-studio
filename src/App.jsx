@@ -69,6 +69,7 @@ function load() {
     const savedLetter = { ...init.cl, ...saved.cl }
     delete savedLetter.includePhone
     delete savedLetter.includeEmail
+    delete savedLetter.signatureData
     const data = {
       ...init,
       ...saved,
@@ -602,6 +603,8 @@ function Letter({ d }) {
           <>
             <span className="letter-signature-space" aria-hidden="true" />
             <span className="letter-signature-name">{d.name}</span>
+            {d.email && <span className="letter-signature-contact">{d.email}</span>}
+            {d.phone && <span className="letter-signature-contact">{d.phone}</span>}
           </>
         )}
       </p>

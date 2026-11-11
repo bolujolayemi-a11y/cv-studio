@@ -231,6 +231,7 @@ button { @apply cursor-pointer; }
 .letter-signoff { margin-top: 24px; }
 .letter-signature-space { display: block; width: 220px; height: 36px; }
 .letter-signature-name { display: block; margin-top: 4px; }
+.letter-signature-contact { display: block; }
 
 @media (max-width: 900px) {
   .wrap { @apply grid-cols-1; }
