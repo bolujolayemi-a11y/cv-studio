@@ -618,8 +618,8 @@ function Letter({ d }) {
           <>
             <span className="letter-signature-space" aria-hidden="true" />
             <span className="letter-signature-name">{d.name}</span>
-            {d.email && <span className="letter-signature-contact">{d.email}</span>}
             {d.phone && <span className="letter-signature-contact">{d.phone}</span>}
+            {d.email && <span className="letter-signature-contact">{d.email}</span>}
           </>
         )}
       </p>

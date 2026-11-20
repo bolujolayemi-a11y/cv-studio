@@ -288,7 +288,7 @@ button { @apply cursor-pointer; }
     margin: 0;
     padding: 0;
     box-shadow: none;
-    font: 11pt/1.35 "Times New Roman", Times, serif;
+    font: 12pt/1.15 "Times New Roman", Times, serif;
     break-inside: avoid;
     page-break-inside: avoid;
   }
