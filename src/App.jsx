@@ -634,6 +634,17 @@ export default function App() {
   const set = (p) => setD((s) => ({ ...s, ...p }))
   const f = (k) => ({ value: d[k], onChange: (e) => set({ [k]: e.target.value }) })
   const cf = (k) => ({ value: d.cl[k], onChange: (e) => set({ cl: { ...d.cl, [k]: e.target.value } }) })
+  const handlePrint = () => {
+    if (typeof window.print !== 'function') {
+      window.alert('Printing is not supported in this browser. Try opening CV Studio in a browser that supports printing.')
+      return
+    }
+    try {
+      window.print()
+    } catch (error) {
+      window.alert(`Unable to open the print dialog: ${error instanceof Error ? error.message : 'Unknown printing error'}`)
+    }
+  }
   const handlePassport = (event) => {
     const file = event.target.files && event.target.files[0]
     if (!file) return
@@ -667,7 +678,7 @@ export default function App() {
           <button className={tab === 'cv' ? 'on' : ''} onClick={() => setTab('cv')}>CV</button>
           <button className={tab === 'cl' ? 'on' : ''} onClick={() => setTab('cl')}>Cover letter</button>
         </div>
-        <button className="p print-button" onClick={() => window.print()}>Print / Save as PDF</button>
+        <button type="button" className="p print-button" onClick={handlePrint}>Print / Save as PDF</button>
       </nav>
       <main className="page-shell">
         <header className="page-heading">
