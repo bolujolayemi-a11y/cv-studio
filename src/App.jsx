@@ -42,6 +42,13 @@ const init = {
 const list = (s) => String(s || '').split(/,|\n/).map((x) => x.trim()).filter(Boolean)
 const joinPresent = (values, separator) => values.map((value) => String(value ?? '').trim()).filter(Boolean).join(separator)
 const formatLocation = (value) => String(value || '').split(',').map((part) => part.trim()).filter(Boolean).join(',\n')
+const moveEntry = (items, index, direction) => {
+  const target = index + direction
+  if (target < 0 || target >= items.length) return items
+  const reordered = [...items]
+  ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+  return reordered
+}
 const hasEntryContent = (entry) => Object.entries(entry || {}).some(([key, value]) => (
   !key.endsWith('Format') && String(value ?? '').trim()
 ))
@@ -151,13 +158,21 @@ const Input = ({ label, area, ...p }) => (
   <label>{label}{area ? <textarea {...p} /> : <input {...p} />}</label>
 )
 
-function DynamicEntryList({ title, entryName = 'Entry', items, onAdd, onRemove, onChange, fields }) {
+function DynamicEntryList({ title, entryName = 'Entry', items, onAdd, onRemove, onMove, onChange, fields }) {
   return (
     <>
       <h2>{title}</h2>
       {items.map((item, idx) => (
         <div className="it" key={idx}>
-          <button className="rm" type="button" onClick={() => onRemove(idx)}>Remove</button>
+          <div className="entry-actions">
+            {onMove && (
+              <div className="entry-order-actions">
+                <button type="button" onClick={() => onMove(idx, -1)} disabled={idx === 0} aria-label={`Move ${entryName} up`}>↑</button>
+                <button type="button" onClick={() => onMove(idx, 1)} disabled={idx === items.length - 1} aria-label={`Move ${entryName} down`}>↓</button>
+              </div>
+            )}
+            <button className="rm" type="button" onClick={() => onRemove(idx)}>Remove</button>
+          </div>
           {fields.map((field) => (
             <div className={field.subsection ? 'entry-field-group' : undefined} key={field.key}>
               {field.subsection && <h3 className="entry-subheading">{field.subsection}</h3>}
@@ -189,9 +204,9 @@ function DynamicEntryList({ title, entryName = 'Entry', items, onAdd, onRemove, 
   )
 }
 
-function DynamicSection({ title, entryName, items, onAdd, onRemove, onChange, fields }) {
+function DynamicSection({ title, entryName, items, onAdd, onRemove, onMove, onChange, fields }) {
   return (
-    <DynamicEntryList title={title} entryName={entryName} items={items} onAdd={onAdd} onRemove={onRemove} fields={fields} onChange={onChange} />
+    <DynamicEntryList title={title} entryName={entryName} items={items} onAdd={onAdd} onRemove={onRemove} onMove={onMove} fields={fields} onChange={onChange} />
   )
 }
 
@@ -739,6 +754,7 @@ export default function App() {
                 items={d.educationEntries || []}
                 onAdd={() => set({ educationEntries: [...(d.educationEntries || []), { ...emptyEducation }] })}
                 onRemove={(i) => set({ educationEntries: (d.educationEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ educationEntries: moveEntry(d.educationEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ educationEntries: (d.educationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'institution', label: 'Institution', subsection: 'Institution attended' },
@@ -757,6 +773,7 @@ export default function App() {
                 items={d.workEntries || []}
                 onAdd={() => set({ workEntries: [...(d.workEntries || []), { ...emptyWork }] })}
                 onRemove={(i) => set({ workEntries: (d.workEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ workEntries: moveEntry(d.workEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ workEntries: (d.workEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'organisation', label: 'Organisation / hospital' },
@@ -775,6 +792,7 @@ export default function App() {
                 items={d.projectEntries || []}
                 onAdd={() => set({ projectEntries: [...(d.projectEntries || []), { ...emptyProject }] })}
                 onRemove={(i) => set({ projectEntries: (d.projectEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ projectEntries: moveEntry(d.projectEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ projectEntries: (d.projectEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'role', label: 'Role', placeholder: 'e.g. Researcher' },
@@ -791,6 +809,7 @@ export default function App() {
                 items={d.registrationEntries || []}
                 onAdd={() => set({ registrationEntries: [...(d.registrationEntries || []), { ...emptyRegistration }] })}
                 onRemove={(i) => set({ registrationEntries: (d.registrationEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ registrationEntries: moveEntry(d.registrationEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ registrationEntries: (d.registrationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'body', label: 'Professional body' },
@@ -806,6 +825,7 @@ export default function App() {
                 items={d.volunteerEntries || []}
                 onAdd={() => set({ volunteerEntries: [...(d.volunteerEntries || []), { ...emptyVolunteer }] })}
                 onRemove={(i) => set({ volunteerEntries: (d.volunteerEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ volunteerEntries: moveEntry(d.volunteerEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ volunteerEntries: (d.volunteerEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'organisation', label: 'Organisation / programme' },
@@ -822,6 +842,7 @@ export default function App() {
                 items={d.certificationEntries || []}
                 onAdd={() => set({ certificationEntries: [...(d.certificationEntries || []), { ...emptyCertification }] })}
                 onRemove={(i) => set({ certificationEntries: (d.certificationEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ certificationEntries: moveEntry(d.certificationEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ certificationEntries: (d.certificationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'name', label: 'Certificate / training' },
@@ -847,6 +868,7 @@ export default function App() {
                 items={d.membershipEntries || []}
                 onAdd={() => set({ membershipEntries: [...(d.membershipEntries || []), { ...emptyMembership }] })}
                 onRemove={(i) => set({ membershipEntries: (d.membershipEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ membershipEntries: moveEntry(d.membershipEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ membershipEntries: (d.membershipEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'organisation', label: 'Organisation' },
@@ -861,6 +883,7 @@ export default function App() {
                 items={d.awardEntries || []}
                 onAdd={() => set({ awardEntries: [...(d.awardEntries || []), { ...emptyAward }] })}
                 onRemove={(i) => set({ awardEntries: (d.awardEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ awardEntries: moveEntry(d.awardEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ awardEntries: (d.awardEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'name', label: 'Award / achievement' },
@@ -876,6 +899,7 @@ export default function App() {
                 items={d.leadershipEntries || []}
                 onAdd={() => set({ leadershipEntries: [...(d.leadershipEntries || []), { ...emptyLeadership }] })}
                 onRemove={(i) => set({ leadershipEntries: (d.leadershipEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ leadershipEntries: moveEntry(d.leadershipEntries || [], i, direction) })}
                 onChange={(idx, key, value) => set({ leadershipEntries: (d.leadershipEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
                 fields={[
                   { key: 'role', label: 'Position / role' },
