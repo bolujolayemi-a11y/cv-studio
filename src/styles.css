@@ -223,6 +223,7 @@ button { @apply cursor-pointer; }
 .pre { white-space: pre-line; }
 .letter { font: 12pt/1.5 "Times New Roman", Times, serif; padding: 28px 36px; text-align: justify; }
 .letter-sender { margin-bottom: 28px; text-align: right; }
+.letter-sender-address, .letter-org-location { font-size: 11pt; }
 .letter-guidance { margin: -4px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .letter-date { margin: 0; }
 .letter-recipient { margin-bottom: 36px; }
