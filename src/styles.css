@@ -280,6 +280,23 @@ button { @apply cursor-pointer; }
   .cv-page.paper.executive, .cv-pagination-measure .paper.executive { padding: 0; }
   .cv-page:last-child { break-after: auto; page-break-after: auto; }
   .cv-paper { font-family: "Times New Roman", Times, serif; }
-  .paper.letter { zoom: 1 !important; width: 100%; max-width: 100%; min-height: 0; margin: 0; padding: 0; box-shadow: none; font: 12pt/1.5 "Times New Roman", Times, serif; }
+  .paper.letter {
+    zoom: 1 !important;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    font: 11pt/1.35 "Times New Roman", Times, serif;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .paper.letter .letter-sender { margin-bottom: 12px; }
+  .paper.letter .letter-recipient { margin-bottom: 14px; }
+  .paper.letter .letter-subject { margin-bottom: 10px; }
+  .paper.letter .letter-signoff { margin-top: 12px; }
+  .paper.letter .letter-signature-space { height: 28px; }
+  .paper.letter .letter-salutation { margin: 8px 0; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
