@@ -212,7 +212,7 @@ function DynamicSection({ title, entryName, items, onAdd, onRemove, onMove, onCh
 
 function CV({ d }) {
   const measurementRef = useRef(null)
-  const [pagination, setPagination] = useState({ signature: '', pages: [], fontSize: 12, lineHeight: 2 })
+  const [pagination, setPagination] = useState({ signature: '', pages: [], fontSize: 12, lineHeight: 1.2 })
   const registrations = (d.registrationEntries || []).filter(hasEntryContent)
   const education = (d.educationEntries || []).filter(hasEntryContent)
   const work = (d.workEntries || []).filter(hasEntryContent)
@@ -347,7 +347,7 @@ function CV({ d }) {
     }] : []),
     ...(memberships.length ? [{
       title: 'Professional memberships',
-      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li>{entry.position || 'Membership'} | {entry.organisation || 'Organisation'}{entry.number ? ` | Membership No.: ${entry.number}` : ''}{entry.year ? ` | ${entry.year}` : ''}</li></ul>)),
+      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li><strong>{entry.organisation || 'Organisation'}</strong> · {entry.position || 'Membership'}{entry.number ? ` · Membership No.: ${entry.number}` : ''}{entry.year ? ` · ${entry.year}` : ''}</li></ul>)),
     }] : []),
     ...(awards.length ? [{
       title: 'Awards & achievements',
@@ -516,7 +516,7 @@ function CV({ d }) {
     }
 
     const fontSize = 11
-    const lineHeight = 1.45
+    const lineHeight = 1.2
     const next = paginate(fontSize, lineHeight)
     root.style.fontSize = ''
     root.style.lineHeight = ''

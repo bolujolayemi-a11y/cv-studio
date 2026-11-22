@@ -119,7 +119,7 @@ button { @apply cursor-pointer; }
 .cv-paper { max-width: none; min-height: 430px; padding: 36px 42px; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: none; }
 .paper:hover { box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.1); }
 .cv-paper:hover { box-shadow: none; }
-.cv-paper, .cv-pagination-measure { font-family: "Times New Roman", Times, serif; font-size: var(--cv-font-size, 11pt); line-height: var(--cv-line-height, 1.5); }
+.cv-paper, .cv-pagination-measure { font-family: "Times New Roman", Times, serif; font-size: var(--cv-font-size, 11pt); line-height: var(--cv-line-height, 1.2); }
 .cv-document, .cv-pages { width: 100%; }
 .cv-pages { display: flex; flex-direction: column; gap: 16px; }
 .cv-page { box-sizing: border-box; }
