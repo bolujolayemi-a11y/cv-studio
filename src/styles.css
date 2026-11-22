@@ -145,8 +145,8 @@ button { @apply cursor-pointer; }
 .cv-bullet-list { margin: 0 !important; padding-left: 20px; list-style: disc outside; }
 .cv-skill-list { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 4px; margin: 0; padding-left: 20px; list-style: disc outside; }
 .cv-skill-list li { min-width: 0; break-inside: avoid; }
-.cv-pagination-measure { position: absolute; top: 0; left: -10000px; width: 159.2mm; visibility: hidden; pointer-events: none; }
-.cv-measure-page { width: 159.2mm; min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.cv-pagination-measure { position: absolute; top: 0; left: -10000px; width: 184.6mm; visibility: hidden; pointer-events: none; }
+.cv-measure-page { width: 184.6mm; min-height: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 .cv-measure-page.paper.executive { padding: 0; }
 .cv-measure-page .cv-header { margin-bottom: 12px; padding-bottom: 10px; }
 .cv-measure-page .cv-section-heading { font-size: 11.5pt; }
@@ -270,13 +270,13 @@ button { @apply cursor-pointer; }
 .cv-pagination-measure .cv-measure-page { padding: 0; }
 
 @media print {
-  @page { size: A4; margin: 25.4mm; }
+  @page { size: A4; margin: 12.7mm; }
   body { background: #fff; }
   .topbar, .page-heading, .ed, .preview-heading { display: none !important; }
   .page-shell, .wrap, .preview-panel, .pw { display: block; max-width: none; margin: 0; padding: 0; border: 0; overflow: visible; background: #fff; box-shadow: none; }
   .cv-pagination-measure { display: none !important; }
   .cv-pages { display: block; }
-  .cv-page { zoom: 1 !important; width: auto; max-width: none; min-height: 246.2mm; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; break-after: page; page-break-after: always; }
+  .cv-page { zoom: 1 !important; width: auto; max-width: none; min-height: 271.6mm; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; break-after: page; page-break-after: always; }
   .cv-page.paper.executive, .cv-pagination-measure .paper.executive { padding: 0; }
   .cv-page:last-child { break-after: auto; page-break-after: auto; }
   .cv-paper { font-family: "Times New Roman", Times, serif; }

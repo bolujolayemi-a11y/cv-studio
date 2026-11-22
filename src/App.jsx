@@ -459,7 +459,7 @@ function CV({ d }) {
     const root = measurementRef.current
     if (!root) return
 
-    const pageHeight = (297 - 50.8) * 96 / 25.4 - 20
+    const pageHeight = (297 - 25.4) * 96 / 25.4 - 20
     const sectionGap = 13
     const headingContentGap = 6
     const entryGap = 6
