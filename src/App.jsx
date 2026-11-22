@@ -459,14 +459,15 @@ function CV({ d }) {
     const root = measurementRef.current
     if (!root) return
 
-    const pageHeight = (297 - 25.4) * 96 / 25.4 - 20
+    const pageHeight = (297 - 25.4) * 96 / 25.4 - 2
     const sectionGap = 13
     const headingContentGap = 6
     const entryGap = 6
     const paginate = (fontSize, lineHeight) => {
       root.style.fontSize = `${fontSize}pt`
       root.style.lineHeight = String(lineHeight)
-      const headerHeight = root.querySelector('.cv-header').getBoundingClientRect().height
+      const header = root.querySelector('.cv-header')
+      const headerHeight = header.getBoundingClientRect().height + Number.parseFloat(window.getComputedStyle(header).marginBottom)
       const measurements = Array.from(root.querySelectorAll('.cv-section')).map((section) => ({
         headingHeight: section.querySelector('.cv-section-heading').getBoundingClientRect().height,
         entries: Array.from(section.querySelectorAll('.cv-entry')).map((entry) => entry.getBoundingClientRect().height),
