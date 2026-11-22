@@ -347,7 +347,7 @@ function CV({ d }) {
     }] : []),
     ...(memberships.length ? [{
       title: 'Professional memberships',
-      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li><strong>{entry.organisation || 'Organisation'}</strong> · {entry.position || 'Membership'}{entry.number ? ` · Membership No.: ${entry.number}` : ''}{entry.year ? ` · ${entry.year}` : ''}</li></ul>)),
+      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li><strong>{entry.organisation || 'Organisation'}</strong> · {entry.position || 'Membership'}{entry.number && <> · Membership&nbsp;No.: {entry.number}</>}{entry.year ? ` · ${entry.year}` : ''}</li></ul>)),
     }] : []),
     ...(awards.length ? [{
       title: 'Awards & achievements',
