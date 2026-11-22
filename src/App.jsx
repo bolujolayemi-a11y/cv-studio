@@ -484,8 +484,6 @@ function CV({ d }) {
           return
         }
 
-        if (measurement.fullHeight <= pageHeight && (current.segments.length || current.used)) newPage()
-
         let entryIndex = 0
         while (entryIndex < measurement.entries.length) {
           const page = pages[pages.length - 1]
