@@ -46,6 +46,10 @@ button { @apply cursor-pointer; }
 .topbar button, .ed button { @apply rounded-lg border px-3 py-2 transition-colors; border-color: transparent; background: transparent; color: var(--muted); }
 .tabs button { @apply px-4 py-2; }
 .tabs button.on { @apply bg-white; color: var(--brand-dark); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); font-weight: 700; }
+.export-actions { display: flex; align-items: center; gap: 8px; }
+.topbar .word-button { @apply rounded-xl px-4 py-2.5; border-color: var(--line); background: #fff; color: var(--brand-dark); font-weight: 700; }
+.topbar .word-button:hover { background: #eff6ff; }
+.topbar .word-button:disabled { cursor: wait; opacity: .7; }
 .topbar .print-button { @apply rounded-xl px-4 py-2.5 text-white; background: var(--brand); font-weight: 700; }
 .topbar .print-button:hover, .ed button.p:hover { background: var(--brand-dark); }
 
@@ -251,7 +255,8 @@ button { @apply cursor-pointer; }
   .brand { font-size: 16px; }
   .tabs { @apply order-3 w-full justify-center; }
   .tabs button { @apply flex-1; }
-  .topbar .print-button { @apply px-3 py-2 text-xs; }
+  .export-actions { order: 2; margin-left: auto; gap: 5px; }
+  .topbar .word-button, .topbar .print-button { @apply px-2 py-2 text-xs; }
   .page-shell { @apply px-4; }
   .page-heading { @apply py-4; }
   .ed { @apply p-5; }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TabStopType, TextRun } from 'docx'
 
 const LS = 'nursecv-react'
 const ACCENTS = ['#2563eb', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#0891b2', '#4f46e5', '#059669']
@@ -60,6 +61,162 @@ const formattedText = (value, format = 'paragraph') => {
     return <List className="cv-text-list">{textLines(value).map((line, index) => <li key={index}>{cleanListLine(line)}</li>)}</List>
   }
   return <div className="pre">{value}</div>
+}
+const collectWordRuns = (node, style = {}) => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent.replace(/\s+/g, ' ')
+    return text ? [new TextRun({ text, ...style })] : []
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE || ['IMG', 'SCRIPT', 'STYLE'].includes(node.tagName)) return []
+  if (node.tagName === 'BR') return [new TextRun({ break: 1 })]
+  const nextStyle = {
+    ...style,
+    ...(node.tagName === 'B' || node.tagName === 'STRONG' ? { bold: true } : {}),
+    ...(node.tagName === 'I' || node.tagName === 'EM' ? { italics: true } : {}),
+  }
+  return Array.from(node.childNodes).flatMap((child) => collectWordRuns(child, nextStyle))
+}
+const downloadWordDocument = async (preview, tab, name) => {
+  if (!preview) throw new Error('The document preview is not available.')
+  const paragraphs = []
+  const addParagraph = (children, options = {}) => {
+    const runs = children.length ? children : [new TextRun(' ')]
+    paragraphs.push(new Paragraph({
+      children: runs,
+      spacing: { before: 0, after: 80, line: 276 },
+      ...options,
+    }))
+  }
+  const renderInlineParagraph = (element, options = {}) => {
+    const children = collectWordRuns(element)
+    if (element.textContent.trim()) addParagraph(children, options)
+  }
+  const renderBlocks = (element) => {
+    Array.from(element.children).forEach(renderBlock)
+  }
+  const renderBlock = (element) => {
+    if (element.classList.contains('cv-section-heading')) {
+      renderInlineParagraph(element, {
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 180, after: 80, line: 276 },
+      })
+      return
+    }
+    if (element.classList.contains('cv-entry')) {
+      const date = element.querySelector(':scope > .cv-timeline-date')
+      if (date?.textContent.trim()) {
+        addParagraph(collectWordRuns(date), {
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 0, after: 30, line: 276 },
+        })
+      }
+      const content = element.querySelector(':scope > .cv-entry-content, :scope > .cv-timeline-content')
+      if (content) renderBlocks(content)
+      return
+    }
+    if (element.classList.contains('t')) {
+      const title = element.querySelector(':scope > span')
+      const date = element.querySelector(':scope > i')
+      const runs = title ? collectWordRuns(title) : []
+      if (date) runs.push(new TextRun({ text: '\t', bold: true }), ...collectWordRuns(date))
+      addParagraph(runs, {
+        tabStops: date ? [{ type: TabStopType.RIGHT, position: 9360 }] : undefined,
+        spacing: { before: 30, after: 30, line: 276 },
+      })
+      return
+    }
+    if (element.classList.contains('pre')) {
+      element.textContent.split(/\r?\n/).filter((line) => line.trim()).forEach((line) => {
+        addParagraph([new TextRun(line.trim())], { alignment: AlignmentType.JUSTIFIED })
+      })
+      return
+    }
+    if (element.matches('ul, ol')) {
+      Array.from(element.children).forEach((item, index) => {
+        const children = collectWordRuns(item)
+        if (element.tagName === 'UL') {
+          addParagraph(children, { bullet: { level: 0 }, indent: { left: 360, hanging: 180 } })
+        } else {
+          addParagraph([new TextRun(`${index + 1}. `), ...children], { indent: { left: 360 } })
+        }
+      })
+      return
+    }
+    if (element.classList.contains('o')) {
+      addParagraph(collectWordRuns(element, { italics: true }))
+      return
+    }
+    if (element.classList.contains('cv-contact-line')) {
+      renderInlineParagraph(element, { alignment: AlignmentType.CENTER, spacing: { before: 0, after: 20, line: 276 } })
+      return
+    }
+    if (element.tagName === 'P') {
+      renderInlineParagraph(element, { alignment: AlignmentType.JUSTIFIED })
+      return
+    }
+    if (element.children.length) {
+      renderBlocks(element)
+      return
+    }
+    renderInlineParagraph(element, { alignment: AlignmentType.JUSTIFIED })
+  }
+
+  if (tab === 'cv') {
+    const pages = Array.from(preview.querySelectorAll('.cv-pages > .cv-page'))
+    const header = pages[0]?.querySelector('.cv-header')
+    if (header) {
+      const title = header.querySelector('.cv-heading h1')
+      if (title) addParagraph([new TextRun({ text: title.textContent.trim(), bold: true, size: 32 })], {
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 50, line: 300 },
+      })
+      const subtitle = header.querySelector('.cv-heading .ti')
+      if (subtitle?.textContent.trim()) addParagraph(collectWordRuns(subtitle), {
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 0, after: 50, line: 276 },
+      })
+      const contactLines = header.querySelectorAll('.cv-contact-line')
+      contactLines.forEach((line) => renderBlock(line))
+    }
+    pages.forEach((page) => page.querySelectorAll('.cv-section').forEach(renderBlocks))
+  } else {
+    const letter = preview.querySelector('.paper.letter')
+    if (!letter) throw new Error('The cover letter preview is not available.')
+    renderBlocks(letter)
+  }
+  if (!paragraphs.length) throw new Error('There is no document content to export.')
+
+  const document = new Document({
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 720, right: 720, bottom: 720, left: 720 },
+        },
+      },
+      children: paragraphs,
+    }],
+    styles: {
+      default: {
+        document: {
+          run: { font: 'Times New Roman', size: 22 },
+          paragraph: { spacing: { after: 80, line: 276 } },
+        },
+      },
+    },
+  })
+  const blob = await Packer.toBlob(document)
+  const objectUrl = URL.createObjectURL(blob)
+  const link = window.document.createElement('a')
+  const filename = String(name || (tab === 'cv' ? 'CV' : 'Cover-Letter'))
+    .normalize('NFKD')
+    .replace(/[^\w -]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+  link.href = objectUrl
+  link.download = `${filename || (tab === 'cv' ? 'CV' : 'Cover-Letter')}.docx`
+  link.click()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
 }
 
 function load() {
@@ -637,6 +794,8 @@ function Letter({ d }) {
 export default function App() {
   const [d, setD] = useState(load)
   const [tab, setTab] = useState('cv')
+  const [isExportingWord, setIsExportingWord] = useState(false)
+  const previewRef = useRef(null)
   useEffect(() => { try { localStorage.setItem(LS, JSON.stringify(d)) } catch {} }, [d])
   const set = (p) => setD((s) => ({ ...s, ...p }))
   const f = (k) => ({ value: d[k], onChange: (e) => set({ [k]: e.target.value }) })
@@ -650,6 +809,16 @@ export default function App() {
       window.print()
     } catch (error) {
       window.alert(`Unable to open the print dialog: ${error instanceof Error ? error.message : 'Unknown printing error'}`)
+    }
+  }
+  const handleWordExport = async () => {
+    setIsExportingWord(true)
+    try {
+      await downloadWordDocument(previewRef.current, tab, d.name)
+    } catch (error) {
+      window.alert(`Unable to create the Word document: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsExportingWord(false)
     }
   }
   const handlePassport = (event) => {
@@ -685,7 +854,12 @@ export default function App() {
           <button className={tab === 'cv' ? 'on' : ''} onClick={() => setTab('cv')}>CV</button>
           <button className={tab === 'cl' ? 'on' : ''} onClick={() => setTab('cl')}>Cover letter</button>
         </div>
-        <button type="button" className="p print-button" onClick={handlePrint}>Print / Save as PDF</button>
+        <div className="export-actions">
+          <button type="button" className="p word-button" onClick={handleWordExport} disabled={isExportingWord}>
+            {isExportingWord ? 'Preparing Word document…' : 'Save as Word'}
+          </button>
+          <button type="button" className="p print-button" onClick={handlePrint}>Print / Save as PDF</button>
+        </div>
       </nav>
       <main className="page-shell">
         <header className="page-heading">
@@ -987,7 +1161,7 @@ export default function App() {
         </section>
         <section className="preview-panel">
           <div className="preview-heading"><div><span>LIVE PREVIEW</span><strong>{tab === 'cv' ? 'Your CV' : 'Your cover letter'}</strong></div><span className="live-dot">Live</span></div>
-          <div className="pw">{tab === 'cv' ? <CV d={d} /> : <Letter d={d} />}</div>
+          <div className="pw" ref={previewRef}>{tab === 'cv' ? <CV d={d} /> : <Letter d={d} />}</div>
         </section>
         </div>
       </main>
