@@ -249,15 +249,21 @@ function CV({ d }) {
       </span>
     ))
   }
-  const makeEntry = (key, content, date = '') => ({
+  const makeEntry = (key, content, date = '', entryClass = '') => ({
     key,
     content: (
-      <div className={`cv-entry${isTimeline ? ' cv-timeline-entry' : ''}`} key={key}>
+      <div className={`cv-entry${entryClass ? ` ${entryClass}` : ''}${isTimeline ? ' cv-timeline-entry' : ''}`} key={key}>
         {isTimeline && <div className="cv-timeline-date" aria-hidden={!date || undefined}>{date}</div>}
         <div className={isTimeline ? 'cv-timeline-content' : 'cv-entry-content'}>{content}</div>
       </div>
     ),
   })
+  const formattedTextLine = (line, format, index) => {
+    const text = cleanListLine(line)
+    if (format === 'bullets') return <ul className="cv-text-list"><li>{text}</li></ul>
+    if (format === 'numbered') return <ol className="cv-text-list" start={index + 1}><li>{text}</li></ol>
+    return <div className="pre">{text}</div>
+  }
   const entryDate = (start, end) => [start, end].filter(Boolean).join(isTimeline ? ' – ' : ' - ')
   const sections = [
     {
@@ -278,14 +284,33 @@ function CV({ d }) {
     }] : []),
     ...(work.length ? [{
       title: 'Work experience',
-      entries: work.map((entry, idx) => makeEntry(`work-${idx}`, (
-        <div>
-          <div className="t"><span>{entry.title || 'Role'}</span>{!isTimeline && entryDate(entry.startDate, entry.endDate) && <i>{entryDate(entry.startDate, entry.endDate)}</i>}</div>
-          {joinPresent([entry.organisation, entry.location], ', ') && <div className="o">{joinPresent([entry.organisation, entry.location], ', ')}</div>}
-          {entry.responsibilities && formattedText(entry.responsibilities, entry.responsibilitiesFormat || 'bullets')}
-          {entry.achievements && <div className="cv-labeled-text"><span className="o">Major achievements:</span>{formattedText(entry.achievements, entry.achievementsFormat)}</div>}
-        </div>
-      ), entryDate(entry.startDate, entry.endDate))),
+      entries: work.flatMap((entry, idx) => {
+        const responsibilities = textLines(entry.responsibilities)
+        const achievements = textLines(entry.achievements)
+        return [
+          makeEntry(`work-${idx}-heading`, (
+            <div>
+              <div className="t"><span>{entry.title || 'Role'}</span>{!isTimeline && entryDate(entry.startDate, entry.endDate) && <i>{entryDate(entry.startDate, entry.endDate)}</i>}</div>
+              {joinPresent([entry.organisation, entry.location], ', ') && <div className="o">{joinPresent([entry.organisation, entry.location], ', ')}</div>}
+            </div>
+          ), entryDate(entry.startDate, entry.endDate), 'cv-work-header'),
+          ...responsibilities.map((line, lineIndex) => makeEntry(
+            `work-${idx}-responsibility-${lineIndex}`,
+            formattedTextLine(line, entry.responsibilitiesFormat || 'bullets', lineIndex),
+            '',
+            'cv-work-detail',
+          )),
+          ...achievements.map((line, lineIndex) => makeEntry(
+            `work-${idx}-achievement-${lineIndex}`,
+            <div className="cv-labeled-text">
+              {lineIndex === 0 && <span className="o">Major achievements:</span>}
+              {formattedTextLine(line, entry.achievementsFormat || 'paragraph', lineIndex)}
+            </div>,
+            '',
+            'cv-work-detail',
+          )),
+        ]
+      }),
     }] : []),
     {
       title: 'Education',
@@ -446,7 +471,7 @@ function CV({ d }) {
     const section = orderedSections[segment.sectionIndex]
     if (!section) return null
     return (
-      <section className="cv-section" key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
+      <section className={`cv-section${section.title === 'Work experience' ? ' cv-work-section' : ''}`} key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
         <h3 className="cv-section-heading">{section.title}</h3>
         <div className="cv-section-content">
           {section.entries.slice(segment.start, segment.end).map((entry) => entry.content)}
@@ -547,7 +572,7 @@ function CV({ d }) {
           {header}
           <div className="cv-page-content">
             {orderedSections.map((section, sectionIndex) => (
-              <section className="cv-section" key={section.title} data-section-index={sectionIndex}>
+              <section className={`cv-section${section.title === 'Work experience' ? ' cv-work-section' : ''}`} key={section.title} data-section-index={sectionIndex}>
                 <h3 className="cv-section-heading">{section.title}</h3>
                 <div className="cv-section-content">{section.entries.map((entry) => entry.content)}</div>
               </section>
