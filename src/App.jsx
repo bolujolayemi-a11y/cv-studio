@@ -7,7 +7,7 @@ const emptyEducation = { institution: '', location: '', qualification: '', grade
 const emptyWork = { organisation: '', location: '', title: '', startDate: '', endDate: '', responsibilities: '', achievements: '' }
 
 const emptyProject = { role: '', title: '', institution: '', year: '', contribution: '' }
-const emptyMembership = { organisation: '', position: '', year: '' }
+const emptyMembership = { organisation: '', position: '', number: '', year: '' }
 const emptyAward = { name: '', organisation: '', year: '', details: '' }
 const emptyLeadership = { role: '', organisation: '', duration: '', responsibilities: '' }
 const emptyReference = { name: '', title: '', organisation: '', phone: '', email: '', relationship: '' }
@@ -347,7 +347,7 @@ function CV({ d }) {
     }] : []),
     ...(memberships.length ? [{
       title: 'Professional memberships',
-      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li>{entry.position || 'Membership'} | {entry.organisation || 'Organisation'}{entry.year ? ` | ${entry.year}` : ''}</li></ul>)),
+      entries: memberships.map((entry, idx) => makeEntry(`membership-${idx}`, <ul className="cv-bullet-list"><li>{entry.position || 'Membership'} | {entry.organisation || 'Organisation'}{entry.number ? ` | Membership No.: ${entry.number}` : ''}{entry.year ? ` | ${entry.year}` : ''}</li></ul>)),
     }] : []),
     ...(awards.length ? [{
       title: 'Awards & achievements',
@@ -391,24 +391,29 @@ function CV({ d }) {
       ))),
     }] : []),
   ]
-  const timelineSectionOrder = [
+  const cvSectionOrder = [
     'Professional summary',
     'Education',
-    'Work experience',
     'Professional registration',
+    'Work experience',
+    'Professional memberships',
     'Research Work',
-    'Volunteer / community experience',
-    'Leadership & Extra-curricular Activities',
-    'Awards & achievements',
     'Key Skills',
     'Certifications & training',
-    'Professional memberships',
+    'Awards & achievements',
+    'Leadership & Extra-curricular Activities',
+    'Volunteer / community experience',
     'Other relevant information',
     'References',
   ]
-  const orderedSections = isTimeline
-    ? [...sections].sort((a, b) => timelineSectionOrder.indexOf(a.title) - timelineSectionOrder.indexOf(b.title))
-    : sections
+  const orderedSections = [...sections].sort((a, b) => {
+    const aIndex = cvSectionOrder.indexOf(a.title)
+    const bIndex = cvSectionOrder.indexOf(b.title)
+    if (aIndex === -1 && bIndex === -1) return 0
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    return aIndex - bIndex
+  })
   const sectionSignature = JSON.stringify(orderedSections.map((section) => [
     section.title,
     section.entries.map((entry) => entry.key),
@@ -757,6 +762,22 @@ export default function App() {
               />
 
               <DynamicSection
+                title="Professional registration"
+                entryName="Registration"
+                items={d.registrationEntries || []}
+                onAdd={() => set({ registrationEntries: [...(d.registrationEntries || []), { ...emptyRegistration }] })}
+                onRemove={(i) => set({ registrationEntries: (d.registrationEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ registrationEntries: moveEntry(d.registrationEntries || [], i, direction) })}
+                onChange={(idx, key, value) => set({ registrationEntries: (d.registrationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
+                fields={[
+                  { key: 'body', label: 'Professional body' },
+                  { key: 'qualification', label: 'Professional qualification' },
+                  { key: 'number', label: 'Registration number' },
+                  { key: 'year', label: 'Year registered' },
+                ]}
+              />
+
+              <DynamicSection
                 title="Work experience"
                 entryName="Employment"
                 items={d.workEntries || []}
@@ -772,6 +793,22 @@ export default function App() {
                   { key: 'endDate', label: 'End date' },
                   { key: 'responsibilities', label: 'Key responsibilities', textarea: true, formatKey: 'responsibilitiesFormat', defaultFormat: 'bullets' },
                   { key: 'achievements', label: 'Major achievements / contributions', textarea: true, formatKey: 'achievementsFormat' },
+                ]}
+              />
+
+              <DynamicSection
+                title="Professional memberships"
+                entryName="Membership"
+                items={d.membershipEntries || []}
+                onAdd={() => set({ membershipEntries: [...(d.membershipEntries || []), { ...emptyMembership }] })}
+                onRemove={(i) => set({ membershipEntries: (d.membershipEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ membershipEntries: moveEntry(d.membershipEntries || [], i, direction) })}
+                onChange={(idx, key, value) => set({ membershipEntries: (d.membershipEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
+                fields={[
+                  { key: 'organisation', label: 'Organisation' },
+                  { key: 'position', label: 'Membership / position' },
+                  { key: 'number', label: 'Membership number' },
+                  { key: 'year', label: 'Year' },
                 ]}
               />
 
@@ -793,36 +830,13 @@ export default function App() {
               />
 
               <DynamicSection
-                title="Professional registration"
-                entryName="Registration"
-                items={d.registrationEntries || []}
-                onAdd={() => set({ registrationEntries: [...(d.registrationEntries || []), { ...emptyRegistration }] })}
-                onRemove={(i) => set({ registrationEntries: (d.registrationEntries || []).filter((_, idx) => idx !== i) })}
-                onMove={(i, direction) => set({ registrationEntries: moveEntry(d.registrationEntries || [], i, direction) })}
-                onChange={(idx, key, value) => set({ registrationEntries: (d.registrationEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
-                fields={[
-                  { key: 'body', label: 'Professional body' },
-                  { key: 'qualification', label: 'Professional qualification' },
-                  { key: 'number', label: 'Registration number' },
-                  { key: 'year', label: 'Year registered' },
-                ]}
-              />
-
-              <DynamicSection
-                title="Volunteer / community experience"
-                entryName="Volunteer experience"
-                items={d.volunteerEntries || []}
-                onAdd={() => set({ volunteerEntries: [...(d.volunteerEntries || []), { ...emptyVolunteer }] })}
-                onRemove={(i) => set({ volunteerEntries: (d.volunteerEntries || []).filter((_, idx) => idx !== i) })}
-                onMove={(i, direction) => set({ volunteerEntries: moveEntry(d.volunteerEntries || [], i, direction) })}
-                onChange={(idx, key, value) => set({ volunteerEntries: (d.volunteerEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
-                fields={[
-                  { key: 'organisation', label: 'Organisation / programme' },
-                  { key: 'role', label: 'Role' },
-                  { key: 'location', label: 'Location' },
-                  { key: 'duration', label: 'Date / duration' },
-                  { key: 'activities', label: 'Activities / responsibilities', textarea: true, formatKey: 'activitiesFormat' },
-                ]}
+                title="Skills"
+                entryName="Skill"
+                items={d.skillEntries || []}
+                onAdd={() => set({ skillEntries: [...(d.skillEntries || []), { ...emptySkill }] })}
+                onRemove={(i) => set({ skillEntries: (d.skillEntries || []).filter((_, idx) => idx !== i) })}
+                onChange={(idx, key, value) => set({ skillEntries: (d.skillEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
+                fields={[{ key: 'name', label: 'Key skill' }]}
               />
 
               <DynamicSection
@@ -838,31 +852,6 @@ export default function App() {
                   { key: 'issuer', label: 'Issuing organisation' },
                   { key: 'obtained', label: 'Date' },
                   { key: 'expiry', label: 'Expiry date' },
-                ]}
-              />
-
-              <DynamicSection
-                title="Skills"
-                entryName="Skill"
-                items={d.skillEntries || []}
-                onAdd={() => set({ skillEntries: [...(d.skillEntries || []), { ...emptySkill }] })}
-                onRemove={(i) => set({ skillEntries: (d.skillEntries || []).filter((_, idx) => idx !== i) })}
-                onChange={(idx, key, value) => set({ skillEntries: (d.skillEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
-                fields={[{ key: 'name', label: 'Key skill' }]}
-              />
-
-              <DynamicSection
-                title="Professional memberships"
-                entryName="Membership"
-                items={d.membershipEntries || []}
-                onAdd={() => set({ membershipEntries: [...(d.membershipEntries || []), { ...emptyMembership }] })}
-                onRemove={(i) => set({ membershipEntries: (d.membershipEntries || []).filter((_, idx) => idx !== i) })}
-                onMove={(i, direction) => set({ membershipEntries: moveEntry(d.membershipEntries || [], i, direction) })}
-                onChange={(idx, key, value) => set({ membershipEntries: (d.membershipEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
-                fields={[
-                  { key: 'organisation', label: 'Organisation' },
-                  { key: 'position', label: 'Membership / position' },
-                  { key: 'year', label: 'Year' },
                 ]}
               />
 
@@ -895,6 +884,23 @@ export default function App() {
                   { key: 'organisation', label: 'Organisation / institution' },
                   { key: 'duration', label: 'Duration' },
                   { key: 'responsibilities', label: 'Responsibilities', textarea: true, formatKey: 'responsibilitiesFormat' },
+                ]}
+              />
+
+              <DynamicSection
+                title="Volunteer / community experience"
+                entryName="Volunteer experience"
+                items={d.volunteerEntries || []}
+                onAdd={() => set({ volunteerEntries: [...(d.volunteerEntries || []), { ...emptyVolunteer }] })}
+                onRemove={(i) => set({ volunteerEntries: (d.volunteerEntries || []).filter((_, idx) => idx !== i) })}
+                onMove={(i, direction) => set({ volunteerEntries: moveEntry(d.volunteerEntries || [], i, direction) })}
+                onChange={(idx, key, value) => set({ volunteerEntries: (d.volunteerEntries || []).map((entry, i) => i === idx ? { ...entry, [key]: value } : entry) })}
+                fields={[
+                  { key: 'organisation', label: 'Organisation / programme' },
+                  { key: 'role', label: 'Role' },
+                  { key: 'location', label: 'Location' },
+                  { key: 'duration', label: 'Date / duration' },
+                  { key: 'activities', label: 'Activities / responsibilities', textarea: true, formatKey: 'activitiesFormat' },
                 ]}
               />
 
