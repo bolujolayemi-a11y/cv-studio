@@ -306,7 +306,7 @@ function CV({ d }) {
                     {entry.course && <span className="education-course">{entry.qualification && ', '}{entry.course}</span>}
                   </div>
                 </div>
-                {entry.grade && <div className="education-grade"><b>Grade:</b> {entry.grade}</div>}
+                {entry.grade && <div className="education-grade">{entry.grade}</div>}
               </div>
             )}
           </div>
@@ -510,31 +510,9 @@ function CV({ d }) {
       return pages.map(({ segments }) => segments)
     }
 
-    const targetPages = 2
-    let fontSize = 12
-    let lineHeight = 2
-    let next = paginate(fontSize, lineHeight)
-    if (next.length > targetPages) {
-      const minimumPages = paginate(10, 1)
-      if (minimumPages.length <= targetPages) {
-        let tooLarge = 0
-        let fits = 1
-        for (let attempt = 0; attempt < 12; attempt += 1) {
-          const reduction = (tooLarge + fits) / 2
-          const candidateFont = 12 - 2 * reduction
-          const candidateLineHeight = 2 - reduction
-          if (paginate(candidateFont, candidateLineHeight).length <= targetPages) fits = reduction
-          else tooLarge = reduction
-        }
-        fontSize = 12 - 2 * fits
-        lineHeight = 2 - fits
-        next = paginate(fontSize, lineHeight)
-      } else {
-        fontSize = 10
-        lineHeight = 1
-        next = minimumPages
-      }
-    }
+    const fontSize = 11
+    const lineHeight = 1.45
+    const next = paginate(fontSize, lineHeight)
     root.style.fontSize = ''
     root.style.lineHeight = ''
     const layout = { signature: layoutSignature, pages: next, fontSize, lineHeight }
@@ -774,7 +752,7 @@ export default function App() {
                   { key: 'graduationYear', label: 'End date' },
                   { key: 'qualification', label: 'Qualification / degree', subsection: 'Educational qualification' },
                   { key: 'course', label: 'Course / field of study' },
-                  { key: 'grade', label: 'Degree classification / CGPA', placeholder: 'e.g. Second Class Upper Honours (4.21/5.0 CGPA)' },
+                  { key: 'grade', label: 'Degree classification / CGPA', placeholder: 'e.g. Second Class Upper Honours' },
                 ]}
               />
 
