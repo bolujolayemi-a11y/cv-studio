@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TabStopType, TextRun } from 'docx'
+import { AlignmentType, BorderStyle, Document, ImageRun, Packer, Paragraph, TabStopType, TextRun } from 'docx'
 
 const LS = 'nursecv-react'
 const ACCENTS = ['#2563eb', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#0891b2', '#4f46e5', '#059669']
@@ -62,6 +62,54 @@ const formattedText = (value, format = 'paragraph') => {
   }
   return <div className="pre">{value}</div>
 }
+const cssColorToWord = (color) => {
+  if (!color || color === 'transparent') return undefined
+  const hex = color.match(/^#([0-9a-f]{6})$/i)?.[1]
+  if (hex) return hex.toUpperCase()
+  const rgb = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/i)
+  if (rgb?.[4] === '0') return undefined
+  return rgb ? rgb.slice(1, 4).map((part) => Number(part).toString(16).padStart(2, '0')).join('').toUpperCase() : undefined
+}
+const lightenWordColor = (color) => color.replace(/[0-9a-f]{2}/gi, (part) => (
+  Math.round(Number.parseInt(part, 16) * 0.12 + 255 * 0.88).toString(16).padStart(2, '0')
+)).toUpperCase()
+const wordRunStyle = (element) => {
+  const css = window.getComputedStyle(element)
+  const fontSize = Number.parseFloat(css.fontSize)
+  const style = {
+    font: css.fontFamily.split(',')[0].replaceAll('"', '').trim(),
+    size: Math.round(fontSize * 1.5),
+    bold: Number.parseInt(css.fontWeight, 10) >= 600,
+    italics: css.fontStyle === 'italic',
+    allCaps: css.textTransform === 'uppercase',
+  }
+  const color = cssColorToWord(css.color)
+  if (color) style.color = color
+  if (css.textDecorationLine.includes('underline')) style.underline = {}
+  return style
+}
+const wordParagraphStyle = (element) => {
+  const css = window.getComputedStyle(element)
+  const parseSpacing = (value) => Math.max(0, Math.round((Number.parseFloat(value) || 0) * 15))
+  const styles = {
+    spacing: {
+      before: parseSpacing(css.marginTop),
+      after: parseSpacing(css.marginBottom),
+      line: Math.round((Number.parseFloat(css.lineHeight) || 18) * 15),
+    },
+  }
+  if (['left', 'center', 'right', 'justify'].includes(css.textAlign)) {
+    styles.alignment = css.textAlign === 'justify' ? AlignmentType.JUSTIFIED : css.textAlign
+  }
+  const background = cssColorToWord(css.backgroundColor)
+  if (background && background !== 'FFFFFF') styles.shading = { fill: background, color: 'auto' }
+  const borderColor = cssColorToWord(css.borderBottomColor)
+  const borderWidth = Number.parseFloat(css.borderBottomWidth)
+  if (borderColor && borderWidth > 0 && css.borderBottomStyle !== 'none') {
+    styles.border = { bottom: { style: BorderStyle.SINGLE, size: Math.max(1, Math.round(borderWidth * 6)), color: borderColor, space: 1 } }
+  }
+  return styles
+}
 const collectWordRuns = (node, style = {}) => {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent.replace(/\s+/g, ' ')
@@ -71,6 +119,7 @@ const collectWordRuns = (node, style = {}) => {
   if (node.tagName === 'BR') return [new TextRun({ break: 1 })]
   const nextStyle = {
     ...style,
+    ...wordRunStyle(node),
     ...(node.tagName === 'B' || node.tagName === 'STRONG' ? { bold: true } : {}),
     ...(node.tagName === 'I' || node.tagName === 'EM' ? { italics: true } : {}),
   }
@@ -89,7 +138,7 @@ const downloadWordDocument = async (preview, tab, name) => {
   }
   const renderInlineParagraph = (element, options = {}) => {
     const children = collectWordRuns(element)
-    if (element.textContent.trim()) addParagraph(children, options)
+    if (element.textContent.trim()) addParagraph(children, { ...wordParagraphStyle(element), ...options })
   }
   const renderBlocks = (element) => {
     Array.from(element.children).forEach(renderBlock)
@@ -97,8 +146,7 @@ const downloadWordDocument = async (preview, tab, name) => {
   const renderBlock = (element) => {
     if (element.classList.contains('cv-section-heading')) {
       renderInlineParagraph(element, {
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 180, after: 80, line: 276 },
+        keepNext: true,
       })
       return
     }
@@ -120,14 +168,15 @@ const downloadWordDocument = async (preview, tab, name) => {
       const runs = title ? collectWordRuns(title) : []
       if (date) runs.push(new TextRun({ text: '\t', bold: true }), ...collectWordRuns(date))
       addParagraph(runs, {
-        tabStops: date ? [{ type: TabStopType.RIGHT, position: 9360 }] : undefined,
-        spacing: { before: 30, after: 30, line: 276 },
+        ...wordParagraphStyle(element),
+        tabStops: date ? [{ type: TabStopType.RIGHT, position: 10460 }] : undefined,
+        keepNext: true,
       })
       return
     }
     if (element.classList.contains('pre')) {
       element.textContent.split(/\r?\n/).filter((line) => line.trim()).forEach((line) => {
-        addParagraph([new TextRun(line.trim())], { alignment: AlignmentType.JUSTIFIED })
+        addParagraph([new TextRun({ text: line.trim(), ...wordRunStyle(element) })], wordParagraphStyle(element))
       })
       return
     }
@@ -135,19 +184,19 @@ const downloadWordDocument = async (preview, tab, name) => {
       Array.from(element.children).forEach((item, index) => {
         const children = collectWordRuns(item)
         if (element.tagName === 'UL') {
-          addParagraph(children, { bullet: { level: 0 }, indent: { left: 360, hanging: 180 } })
+          addParagraph(children, { ...wordParagraphStyle(item), bullet: { level: 0 }, indent: { left: 360, hanging: 180 } })
         } else {
-          addParagraph([new TextRun(`${index + 1}. `), ...children], { indent: { left: 360 } })
+          addParagraph([new TextRun(`${index + 1}. `), ...children], { ...wordParagraphStyle(item), indent: { left: 360 } })
         }
       })
       return
     }
     if (element.classList.contains('o')) {
-      addParagraph(collectWordRuns(element, { italics: true }))
+      addParagraph(collectWordRuns(element), wordParagraphStyle(element))
       return
     }
     if (element.classList.contains('cv-contact-line')) {
-      renderInlineParagraph(element, { alignment: AlignmentType.CENTER, spacing: { before: 0, after: 20, line: 276 } })
+      renderInlineParagraph(element)
       return
     }
     if (element.tagName === 'P') {
@@ -165,18 +214,50 @@ const downloadWordDocument = async (preview, tab, name) => {
     const pages = Array.from(preview.querySelectorAll('.cv-pages > .cv-page'))
     const header = pages[0]?.querySelector('.cv-header')
     if (header) {
+      const template = pages[0].classList.contains('timeline') ? 'timeline'
+        : pages[0].classList.contains('modern') ? 'modern'
+          : pages[0].classList.contains('executive') ? 'executive'
+            : pages[0].classList.contains('classic') ? 'classic' : 'ats'
+      const accent = cssColorToWord(window.getComputedStyle(pages[0]).getPropertyValue('--ac')) || '2563EB'
+      const headerBorder = cssColorToWord(window.getComputedStyle(header).borderBottomColor)
+      const headerBorderStyle = headerBorder
+        ? { border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: headerBorder, space: 1 } } }
+        : {}
+      const photo = header.querySelector('.passport-preview')
+      const photoData = photo?.src.match(/^data:image\/(png|jpe?g|gif|bmp);base64,(.+)$/i)
+      if (photoData) {
+        const imageType = photoData[1].toLowerCase().replace('jpeg', 'jpg')
+        const imageData = Uint8Array.from(window.atob(photoData[2]), (character) => character.charCodeAt(0))
+        addParagraph([new ImageRun({
+          data: imageData,
+          type: imageType,
+          transformation: { width: 76, height: 76 },
+        })], {
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 0, after: 80, line: 1200 },
+        })
+      }
       const title = header.querySelector('.cv-heading h1')
-      if (title) addParagraph([new TextRun({ text: title.textContent.trim(), bold: true, size: 32 })], {
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 50, line: 300 },
+      if (title) addParagraph(collectWordRuns(title), {
+        ...wordParagraphStyle(title),
+        ...(template === 'modern' ? { shading: { fill: lightenWordColor(accent), color: 'auto' } } : {}),
+        ...(template === 'executive' ? { border: { left: { style: BorderStyle.SINGLE, size: 20, color: accent, space: 6 } }, indent: { left: 180 } } : {}),
+        spacing: { before: 0, after: 80, line: 360 },
       })
       const subtitle = header.querySelector('.cv-heading .ti')
       if (subtitle?.textContent.trim()) addParagraph(collectWordRuns(subtitle), {
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 0, after: 50, line: 276 },
+        ...wordParagraphStyle(subtitle),
+        ...(template === 'modern' ? { shading: { fill: lightenWordColor(accent), color: 'auto' } } : {}),
       })
       const contactLines = header.querySelectorAll('.cv-contact-line')
-      contactLines.forEach((line) => renderBlock(line))
+      contactLines.forEach((line) => addParagraph(collectWordRuns(line), {
+        ...wordParagraphStyle(line),
+        ...(template === 'modern' ? { shading: { fill: lightenWordColor(accent), color: 'auto' } } : {}),
+      }))
+      addParagraph([new TextRun(' ')], {
+        ...headerBorderStyle,
+        spacing: { before: 0, after: 140, line: 80 },
+      })
     }
     pages.forEach((page) => page.querySelectorAll('.cv-section').forEach(renderBlocks))
   } else {
@@ -190,19 +271,14 @@ const downloadWordDocument = async (preview, tab, name) => {
     sections: [{
       properties: {
         page: {
-          size: { width: 12240, height: 15840 },
+          size: { width: 11906, height: 16838 },
           margin: { top: 720, right: 720, bottom: 720, left: 720 },
         },
       },
       children: paragraphs,
     }],
     styles: {
-      default: {
-        document: {
-          run: { font: 'Times New Roman', size: 22 },
-          paragraph: { spacing: { after: 80, line: 276 } },
-        },
-      },
+      default: { document: { run: { font: 'Times New Roman', size: tab === 'cl' ? 24 : 22 } } },
     },
   })
   const blob = await Packer.toBlob(document)
@@ -629,7 +705,7 @@ function CV({ d }) {
     if (!section) return null
     return (
       <section className={`cv-section${section.title === 'Work experience' ? ' cv-work-section' : ''}`} key={`${pageIndex}-${segmentIndex}-${segment.sectionIndex}`}>
-        <h3 className="cv-section-heading">{section.title}</h3>
+        {segment.start === 0 && <h3 className="cv-section-heading">{section.title}</h3>}
         <div className="cv-section-content">
           {section.entries.slice(segment.start, segment.end).map((entry) => entry.content)}
         </div>
